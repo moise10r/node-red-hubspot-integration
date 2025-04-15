@@ -24,8 +24,8 @@
     ],
     "out": [
       {
-        "x": 1160,
-        "y": 80,
+        "x": 1180,
+        "y": 60,
         "wires": [
           {
             "id": "extract-contact-data",
@@ -85,18 +85,7 @@
         ]
       }
     ],
-    "out": [
-      {
-        "x": 1300,
-        "y": 80,
-        "wires": [
-          {
-            "id": "log-email-sent",
-            "port": 0
-          }
-        ]
-      }
-    ],
+    "out": [],
     "env": [],
     "meta": {},
     "color": "#DDAA99"
@@ -206,9 +195,9 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 960,
+    "x": 980,
     "y": 60,
-    "wires": [["ad42e50bda737090"]]
+    "wires": [[]]
   },
   {
     "id": "handle-api-error",
@@ -221,8 +210,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 910,
-    "y": 220,
+    "x": 970,
+    "y": 160,
     "wires": [[]]
   },
   {
@@ -270,23 +259,6 @@
     "statusType": "auto",
     "x": 620,
     "y": 280,
-    "wires": []
-  },
-  {
-    "id": "ad42e50bda737090",
-    "type": "debug",
-    "z": "hubspot-data-subflow",
-    "name": "Hubspot error",
-    "active": true,
-    "tosidebar": true,
-    "console": false,
-    "tostatus": false,
-    "complete": "payload",
-    "targetType": "msg",
-    "statusVal": "",
-    "statusType": "auto",
-    "x": 1180,
-    "y": 160,
     "wires": []
   },
   {
@@ -410,22 +382,7 @@
     "libs": [],
     "x": 780,
     "y": 80,
-    "wires": [["send-email", "9c35ecf0137b19a0"]]
-  },
-  {
-    "id": "log-email-sent",
-    "type": "function",
-    "z": "notification-subflow",
-    "name": "Log Email Success",
-    "func": "// Log successful email send\nmsg.emailSent = true;\nmsg.emailTimestamp = new Date().toISOString();\n\n// For the output, simplify the payload\nmsg.payload = {\n    status: \"Email sent successfully\",\n    recipient: msg.payload.to,\n    subject: msg.payload.subject,\n    timestamp: msg.emailTimestamp\n};\n\nreturn msg;",
-    "outputs": 1,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 1110,
-    "y": 40,
-    "wires": [[]]
+    "wires": [["send-email"]]
   },
   {
     "id": "email-error-handler",
@@ -472,40 +429,6 @@
     "wires": []
   },
   {
-    "id": "send-email",
-    "type": "e-mail",
-    "z": "notification-subflow",
-    "server": "smtp.gmail.com",
-    "port": "465",
-    "authtype": "BASIC",
-    "saslformat": false,
-    "token": "oauth2Response.access_token",
-    "secure": true,
-    "tls": true,
-    "name": "",
-    "dname": "Send Email Notification",
-    "x": 1130,
-    "y": 200,
-    "wires": []
-  },
-  {
-    "id": "9c35ecf0137b19a0",
-    "type": "debug",
-    "z": "notification-subflow",
-    "name": "Email error",
-    "active": true,
-    "tosidebar": true,
-    "console": false,
-    "tostatus": false,
-    "complete": "true",
-    "targetType": "full",
-    "statusVal": "",
-    "statusType": "auto",
-    "x": 1230,
-    "y": 640,
-    "wires": []
-  },
-  {
     "id": "fcbe63a8be8eb981",
     "type": "split",
     "z": "notification-subflow",
@@ -520,6 +443,23 @@
     "x": 470,
     "y": 80,
     "wires": [["check-email-config"]]
+  },
+  {
+    "id": "send-email",
+    "type": "e-mail",
+    "z": "notification-subflow",
+    "server": "smtp.gmail.com",
+    "port": "465",
+    "authtype": "BASIC",
+    "saslformat": false,
+    "token": "oauth2Response.access_token",
+    "secure": true,
+    "tls": true,
+    "name": "",
+    "dname": "Send Email Notification",
+    "x": 1110,
+    "y": 80,
+    "wires": []
   },
   {
     "id": "check-operation",
@@ -544,7 +484,7 @@
     "repair": false,
     "outputs": 2,
     "x": 460,
-    "y": 60,
+    "y": 80,
     "wires": [["read-state-file"], ["prepare-write-data"]]
   },
   {
@@ -568,7 +508,7 @@
     "type": "function",
     "z": "persistence-subflow",
     "name": "Process Read Data",
-    "func": "// Process the data read from file\nlet syncData = msg.payload;\n\nif (!syncData || typeof syncData !== 'object') {\n    // No sync data found or invalid format\n    syncData = {\n        lastSync: null,\n        recordCount: 0,\n        syncStatus: \"never_run\"\n    };\n}\n\n// Add the sync data to the message\nmsg.lastSync = syncData.lastSync;\n\n// Keep the original payload if it exists (for continuity in the flow)\nif (!msg.originalPayload && msg.payload) {\n    msg.originalPayload = msg.payload;\n}\n\n// Set the payload to the sync data for the output\nmsg.payload = syncData;\n\nreturn msg;",
+    "func": "// Process the data read from file\nlet syncData = JSON.parse(msg.payload);\n\nif (!syncData || typeof syncData !== 'object') {\n    // No sync data found or invalid format\n    syncData = {\n        lastSync: null,\n        recordCount: 0,\n        syncStatus: \"never_run\"\n    };\n}\n\n// Add the sync data to the message\nmsg.lastSync = syncData.lastSync;\n\n// Keep the original payload if it exists (for continuity in the flow)\nif (!msg.originalPayload && msg.payload) {\n    msg.originalPayload = msg.payload;\n}\n\n// Set the payload to the sync data for the output\nmsg.payload = syncData;\n\nreturn msg;",
     "outputs": 1,
     "timeout": "",
     "noerr": 0,
@@ -591,7 +531,7 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 670,
+    "x": 690,
     "y": 120,
     "wires": [["write-state-file"]]
   },
@@ -661,7 +601,7 @@
     "id": "d00697ab1142a221",
     "type": "debug",
     "z": "persistence-subflow",
-    "name": "debug 2",
+    "name": "Write File Successfully",
     "active": true,
     "tosidebar": true,
     "console": false,
@@ -670,8 +610,8 @@
     "targetType": "full",
     "statusVal": "payload",
     "statusType": "auto",
-    "x": 1060,
-    "y": 200,
+    "x": 1180,
+    "y": 120,
     "wires": []
   },
   {
@@ -764,7 +704,7 @@
     "env": [],
     "x": 1350,
     "y": 60,
-    "wires": [["log-completion"]]
+    "wires": []
   },
   {
     "id": "update-last-sync",
@@ -844,7 +784,7 @@
     "env": [],
     "x": 640,
     "y": 240,
-    "wires": [[]]
+    "wires": []
   },
   {
     "id": "manual-trigger",

@@ -24,8 +24,8 @@
         ],
         "out": [
             {
-                "x": 1180,
-                "y": 60,
+                "x": 1160,
+                "y": 80,
                 "wires": [
                     {
                         "id": "extract-contact-data",
@@ -210,10 +210,12 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 980,
+        "x": 960,
         "y": 60,
         "wires": [
-            []
+            [
+                "ad42e50bda737090"
+            ]
         ]
     },
     {
@@ -227,8 +229,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 970,
-        "y": 160,
+        "x": 910,
+        "y": 220,
         "wires": [
             []
         ]
@@ -286,6 +288,23 @@
         "statusType": "auto",
         "x": 620,
         "y": 280,
+        "wires": []
+    },
+    {
+        "id": "ad42e50bda737090",
+        "type": "debug",
+        "z": "hubspot-data-subflow",
+        "name": "Hubspot error",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1180,
+        "y": 160,
         "wires": []
     },
     {
@@ -437,7 +456,8 @@
         "y": 80,
         "wires": [
             [
-                "send-email"
+                "send-email",
+                "9c35ecf0137b19a0"
             ]
         ]
     },
@@ -493,6 +513,23 @@
         "statusType": "auto",
         "x": 590,
         "y": 280,
+        "wires": []
+    },
+    {
+        "id": "9c35ecf0137b19a0",
+        "type": "debug",
+        "z": "notification-subflow",
+        "name": "Email error",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1110,
+        "y": 180,
         "wires": []
     },
     {
@@ -600,7 +637,9 @@
         "x": 930,
         "y": 40,
         "wires": [
-            []
+            [
+                "2953715f82bb24a2"
+            ]
         ]
     },
     {
@@ -733,6 +772,23 @@
                 "check-operation"
             ]
         ]
+    },
+    {
+        "id": "2953715f82bb24a2",
+        "type": "debug",
+        "z": "persistence-subflow",
+        "name": "process read data",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1330,
+        "y": 80,
+        "wires": []
     },
     {
         "id": "scheduler",
