@@ -1,0 +1,10 @@
+services:
+  omnipeak-node-red:
+    image: nodered/node-red:latest
+    environment:
+      - DATA_DIR=/data
+    ports:
+      - "1880:1880"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
