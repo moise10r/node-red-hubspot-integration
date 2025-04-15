@@ -1,0 +1,1030 @@
+[
+    {
+        "id": "16fee7340f687328",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "main-flow",
+        "type": "tab",
+        "label": "Main Flow",
+        "disabled": false,
+        "info": "# Main Flow\nThis is the primary flow that orchestrates the entire HubSpot integration process."
+    },
+    {
+        "id": "hubspot-data-subflow",
+        "type": "subflow",
+        "name": "HubSpot Data Collection",
+        "info": "# HubSpot Data Collection Subflow\nHandles authentication and retrieval of data from the HubSpot CRM API.",
+        "in": [
+            {
+                "x": 40,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "hubspot-data-input"
+                    }
+                ]
+            }
+        ],
+        "out": [
+            {
+                "x": 1160,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "extract-contact-data",
+                        "port": 0
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "id": "data-processing-subflow",
+        "type": "subflow",
+        "name": "Data Processing",
+        "info": "# Data Processing Subflow\nFilters and transforms the data retrieved from HubSpot API.",
+        "category": "",
+        "in": [
+            {
+                "x": 40,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "data-processing-input"
+                    }
+                ]
+            }
+        ],
+        "out": [
+            {
+                "x": 740,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "transform-data",
+                        "port": 0
+                    }
+                ]
+            }
+        ],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99"
+    },
+    {
+        "id": "notification-subflow",
+        "type": "subflow",
+        "name": "Email Notification",
+        "info": "# Email Notification Subflow\nSends emails based on processed data using node-red-node-email.",
+        "category": "",
+        "in": [
+            {
+                "x": 40,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "notification-input"
+                    }
+                ]
+            }
+        ],
+        "out": [
+            {
+                "x": 1300,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "log-email-sent",
+                        "port": 0
+                    }
+                ]
+            }
+        ],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99"
+    },
+    {
+        "id": "persistence-subflow",
+        "type": "subflow",
+        "name": "Data Persistence",
+        "info": "# Data Persistence Subflow\nHandles storing and retrieving state data for incremental processing.",
+        "category": "",
+        "in": [
+            {
+                "x": 40,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "persistence-input"
+                    }
+                ]
+            }
+        ],
+        "out": [
+            {
+                "x": 1180,
+                "y": 40,
+                "wires": [
+                    {
+                        "id": "process-read-data",
+                        "port": 0
+                    }
+                ]
+            }
+        ],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99"
+    },
+    {
+        "id": "hubspot-data-input",
+        "type": "function",
+        "z": "hubspot-data-subflow",
+        "name": "Prepare API Request",
+        "func": "// Get the last sync timestamp if available\nconst lastSync = msg.lastSync || null;\n\n// Configure HubSpot API Request\nlet endpoint = \"https://api.hubapi.com/crm/v3/objects/contacts\";\nlet params = {\n    limit: 20,\n    properties: [\"email\", \"firstname\", \"lastname\", \"company\", \"industry\", \"lastmodifieddate\"]\n};\n\n// If we have a last sync time, only get records updated since then\nif (lastSync) {\n    params.filter = `lastmodifieddate > ${lastSync}`;\n}\n\n// Prepare the request URL with query parameters\nlet url = endpoint + \"?\" + Object.entries(params)\n    .map(([key, value]) => {\n        if (key === \"properties\") {\n            return value.map(prop => `properties=${encodeURIComponent(prop)}`).join(\"&\");\n        }\n        return `${encodeURIComponent(key)}=${encodeURIComponent(value)}`;\n    })\n    .join(\"&\");\n\nmsg.url = url;\nmsg.method = \"GET\";\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 220,
+        "y": 80,
+        "wires": [
+            [
+                "hubspot-http-request"
+            ]
+        ]
+    },
+    {
+        "id": "hubspot-http-request",
+        "type": "http request",
+        "z": "hubspot-data-subflow",
+        "name": "HubSpot API Request",
+        "method": "use",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "bearer",
+        "senderr": false,
+        "headers": [],
+        "x": 480,
+        "y": 80,
+        "wires": [
+            [
+                "check-api-response"
+            ]
+        ]
+    },
+    {
+        "id": "check-api-response",
+        "type": "switch",
+        "z": "hubspot-data-subflow",
+        "name": "Check Response",
+        "property": "statusCode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "200",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 730,
+        "y": 80,
+        "wires": [
+            [
+                "extract-contact-data"
+            ],
+            [
+                "handle-api-error"
+            ]
+        ]
+    },
+    {
+        "id": "extract-contact-data",
+        "type": "function",
+        "z": "hubspot-data-subflow",
+        "name": "Extract Contact Data",
+        "func": "// Extract relevant data from the HubSpot API response\nconst response = msg.payload;\n\nif (response && response.results && Array.isArray(response.results)) {\n    // Transform the data structure for easier processing\n    msg.payload = response.results.map(contact => {\n        return {\n            id: contact.id,\n            properties: contact.properties,\n            createdAt: contact.createdAt,\n            updatedAt: contact.updatedAt\n        };\n    });\n    \n    // Store pagination info for potential batch processing\n    if (response.paging) {\n        msg.paging = response.paging;\n    }\n    \n    return msg;\n} else {\n    // No results or unexpected format\n    msg.payload = [];\n    return msg;\n}",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 960,
+        "y": 60,
+        "wires": [
+            [
+                "ad42e50bda737090"
+            ]
+        ]
+    },
+    {
+        "id": "handle-api-error",
+        "type": "function",
+        "z": "hubspot-data-subflow",
+        "name": "Handle API Error",
+        "func": "// Process the error response from HubSpot API\nmsg.error = {\n    source: \"HubSpot API\",\n    statusCode: msg.statusCode,\n    payload: msg.payload,\n    message: `HubSpot API error: ${msg.statusCode} - ${JSON.stringify(msg.payload)}`\n};\n\n// Pass the error to the catch node\nthrow new Error(msg.error.message);",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 910,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "hubspot-data-catch",
+        "type": "catch",
+        "z": "hubspot-data-subflow",
+        "name": "HubSpot API Error Handler",
+        "scope": [
+            "hubspot-http-request",
+            "extract-contact-data",
+            "handle-api-error"
+        ],
+        "uncaught": false,
+        "x": 150,
+        "y": 280,
+        "wires": [
+            [
+                "format-api-error"
+            ]
+        ]
+    },
+    {
+        "id": "format-api-error",
+        "type": "function",
+        "z": "hubspot-data-subflow",
+        "name": "Format Error",
+        "func": "// Ensure error is properly formatted\nif (!msg.error) {\n    msg.error = {\n        source: \"HubSpot Data Collection\",\n        message: msg.error?.message || \"Unknown error in HubSpot data collection\"\n    };\n}\n\nmsg.payload = {\n    error: true,\n    message: msg.error.message,\n    timestamp: new Date().toISOString()\n};\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 280,
+        "wires": [
+            [
+                "debug-api-error"
+            ]
+        ]
+    },
+    {
+        "id": "debug-api-error",
+        "type": "debug",
+        "z": "hubspot-data-subflow",
+        "name": "Log API Error",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 620,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "ad42e50bda737090",
+        "type": "debug",
+        "z": "hubspot-data-subflow",
+        "name": "Hubspot error",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1180,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "data-processing-input",
+        "type": "function",
+        "z": "data-processing-subflow",
+        "name": "Validate Input Data",
+        "func": "// Validate input data format\nif (!Array.isArray(msg.payload)) {\n    msg.payload = [];\n    node.warn(\"Input data is not an array. Converting to empty array.\");\n}\n\n// Pass the data forward\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 190,
+        "y": 80,
+        "wires": [
+            [
+                "filter-contacts"
+            ]
+        ]
+    },
+    {
+        "id": "filter-contacts",
+        "type": "function",
+        "z": "data-processing-subflow",
+        "name": "Filter Contacts",
+        "func": "// Filter contacts based on criteria\nconst contacts = msg.payload;\n\nmsg.payload = contacts.filter(contact => {\n    // Check if the contact has an email\n    if (!contact.properties.email) {\n        return false;\n    }\n    \n      // Filter for technology or healthcare industries\n    const industry = contact.properties.industry?.toLowerCase();\n    if (industry) {\n        return ['technology', 'healthcare', 'software', 'medical'].some(\n            targetIndustry => industry.includes(targetIndustry)\n        );\n    }\n    return true;\n});\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 80,
+        "wires": [
+            [
+                "transform-data"
+            ]
+        ]
+    },
+    {
+        "id": "transform-data",
+        "type": "function",
+        "z": "data-processing-subflow",
+        "name": "Transform Data",
+        "func": "// Transform contact data into a more usable format for email later\nconst contacts = msg.payload;\n\nmsg.payload = contacts.map(contact => {\n    // Extract and normalize contact properties\n    return {\n        id: contact.id,\n        email: contact.properties.email,\n        name: `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim(),\n        company: contact.properties.company || 'Unknown',\n        industry: contact.properties.industry || 'Unknown',\n        lastModified: contact.properties.lastmodifieddate,\n    };\n});\n\nmsg.metadata = {\n    totalContacts: msg.payload.length,\n    processedDate: new Date().toISOString(),\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "data-processing-catch",
+        "type": "catch",
+        "z": "data-processing-subflow",
+        "name": "Processing Error Handler",
+        "scope": [
+            "validate-input-data",
+            "filter-contacts",
+            "transform-data"
+        ],
+        "uncaught": false,
+        "x": 150,
+        "y": 160,
+        "wires": [
+            [
+                "format-processing-error"
+            ]
+        ]
+    },
+    {
+        "id": "format-processing-error",
+        "type": "function",
+        "z": "data-processing-subflow",
+        "name": "Format Error",
+        "func": "// Ensure error is properly formatted\nif (!msg.error) {\n    msg.error = {\n        source: \"Data Processing\",\n        message: msg.error?.message || \"Unknown error in data processing\"\n    };\n}\n\nmsg.payload = {\n    error: true,\n    message: msg.error.message,\n    timestamp: new Date().toISOString()\n};\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 160,
+        "wires": [
+            [
+                "debug-processing-error"
+            ]
+        ]
+    },
+    {
+        "id": "debug-processing-error",
+        "type": "debug",
+        "z": "data-processing-subflow",
+        "name": "Log Processing Error",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 630,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "notification-input",
+        "type": "function",
+        "z": "notification-subflow",
+        "name": "Format Email Message",
+        "func": "const contacts = msg.payload;\nif (!Array.isArray(contacts) || contacts.length === 0) {\n    return null; // No contacts to notify\n}\nconst metadata = msg.metadata || {};\nconst subject = \"HubSpot Contacts Update\";\n\nfunction generateEmailBody(contact) {\n    const name = contact.name;\n    const html = '<html>' +\n        '<head>' +\n        '<style>' +\n        'body{font-family:Arial,sans-serif;color:#333;margin:20px;}' +\n        '.container{max-width:600px;}' +\n        '.details{background:#f4f4f4;padding:10px;border-radius:5px;}' +\n        'pre{white-space:pre-wrap;}' +\n        '</style>' +\n        '</head>' +\n        '<body>' +\n        '<div class=\"container\">' +\n        '<p>Hello <strong>' + name + '</strong>,</p>' +\n        '<p>This is an automated update regarding your contact information.</p>' +\n        '<p><strong>Details:</strong></p>' +\n        '<p>Thank you,<br>The HubSpot Team</p>' +\n        '</div>' +\n        '</body>' +\n        '</html>';\n    \n    return html;\n}\n\nconst emails = contacts.map(contact => ({\n    to: contact.email,\n    subject: subject,\n    html: generateEmailBody(contact)\n    \n}));\n\nmsg.payload = emails\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 200,
+        "y": 80,
+        "wires": [
+            [
+                "fcbe63a8be8eb981"
+            ]
+        ]
+    },
+    {
+        "id": "check-email-config",
+        "type": "function",
+        "z": "notification-subflow",
+        "name": "Validate Email Config",
+        "func": "const email = msg.payload;\n\n// Validate input\nif (!email || typeof email !== 'object') {\n    node.error(\"Invalid email format: email must be an object\", msg);\n    return null;\n}\n\n\nif (!email.to) {\n    node.warn(\"Missing recipient (to) field in email\");\n}\nmsg = {\n    to: email.to,\n    topic: email.subject,\n    payload: email.html?.trim()\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 780,
+        "y": 80,
+        "wires": [
+            [
+                "send-email",
+                "9c35ecf0137b19a0"
+            ]
+        ]
+    },
+    {
+        "id": "log-email-sent",
+        "type": "function",
+        "z": "notification-subflow",
+        "name": "Log Email Success",
+        "func": "// Log successful email send\nmsg.emailSent = true;\nmsg.emailTimestamp = new Date().toISOString();\n\n// For the output, simplify the payload\nmsg.payload = {\n    status: \"Email sent successfully\",\n    recipient: msg.payload.to,\n    subject: msg.payload.subject,\n    timestamp: msg.emailTimestamp\n};\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1110,
+        "y": 40,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "email-error-handler",
+        "type": "catch",
+        "z": "notification-subflow",
+        "name": "Email Error Handler",
+        "scope": [
+            "send-email"
+        ],
+        "uncaught": false,
+        "x": 180,
+        "y": 280,
+        "wires": [
+            [
+                "log-email-error"
+            ]
+        ]
+    },
+    {
+        "id": "log-email-error",
+        "type": "function",
+        "z": "notification-subflow",
+        "name": "Log Email Error",
+        "func": "// Format the email error\nmsg.error = {\n    source: \"Email Notification\",\n    message: msg.error?.message || \"Unknown error in email notification\",\n    timestamp: new Date().toISOString()\n};\n\nmsg.payload = {\n    status: \"Email sending failed\",\n    error: msg.error.message,\n    timestamp: msg.error.timestamp\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 280,
+        "wires": [
+            [
+                "debug-email-error"
+            ]
+        ]
+    },
+    {
+        "id": "debug-email-error",
+        "type": "debug",
+        "z": "notification-subflow",
+        "name": "Log Email Error",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 590,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "9c35ecf0137b19a0",
+        "type": "debug",
+        "z": "notification-subflow",
+        "name": "Email error",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1230,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "fcbe63a8be8eb981",
+        "type": "split",
+        "z": "notification-subflow",
+        "name": "Split into individual emails",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "property": "payload",
+        "x": 470,
+        "y": 80,
+        "wires": [
+            [
+                "check-email-config"
+            ]
+        ]
+    },
+    {
+        "id": "send-email",
+        "type": "e-mail",
+        "z": "notification-subflow",
+        "server": "smtp.gmail.com",
+        "port": "465",
+        "authtype": "BASIC",
+        "saslformat": false,
+        "token": "oauth2Response.access_token",
+        "secure": true,
+        "tls": true,
+        "name": "",
+        "dname": "Send Email Notification",
+        "x": 1130,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "check-operation",
+        "type": "switch",
+        "z": "persistence-subflow",
+        "name": "Read or Write",
+        "property": "operation",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "read",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "write",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 460,
+        "y": 60,
+        "wires": [
+            [
+                "read-state-file"
+            ],
+            [
+                "prepare-write-data"
+            ]
+        ]
+    },
+    {
+        "id": "read-state-file",
+        "type": "file in",
+        "z": "persistence-subflow",
+        "name": "Read State File",
+        "filename": "filename",
+        "filenameType": "msg",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "utf8",
+        "allProps": false,
+        "x": 680,
+        "y": 40,
+        "wires": [
+            [
+                "process-read-data"
+            ]
+        ]
+    },
+    {
+        "id": "process-read-data",
+        "type": "function",
+        "z": "persistence-subflow",
+        "name": "Process Read Data",
+        "func": "// Process the data read from file\nlet syncData = msg.payload;\n\nif (!syncData || typeof syncData !== 'object') {\n    // No sync data found or invalid format\n    syncData = {\n        lastSync: null,\n        recordCount: 0,\n        syncStatus: \"never_run\"\n    };\n}\n\n// Add the sync data to the message\nmsg.lastSync = syncData.lastSync;\n\n// Keep the original payload if it exists (for continuity in the flow)\nif (!msg.originalPayload && msg.payload) {\n    msg.originalPayload = msg.payload;\n}\n\n// Set the payload to the sync data for the output\nmsg.payload = syncData;\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 930,
+        "y": 40,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "prepare-write-data",
+        "type": "function",
+        "z": "persistence-subflow",
+        "name": "Prepare Write Data",
+        "func": "// Format the data to be written\nmsg.payload = msg.storageData;\n\n// Ensure we have a timestamp\nif (!msg.payload.timestamp) {\n    msg.payload.timestamp = new Date().toISOString();\n}\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 670,
+        "y": 120,
+        "wires": [
+            [
+                "write-state-file"
+            ]
+        ]
+    },
+    {
+        "id": "write-state-file",
+        "type": "file",
+        "z": "persistence-subflow",
+        "name": "Write State File",
+        "filename": "",
+        "appendNewline": false,
+        "createDir": true,
+        "overwriteFile": "true",
+        "encoding": "utf8",
+        "x": 940,
+        "y": 120,
+        "wires": [
+            [
+                "d00697ab1142a221"
+            ]
+        ]
+    },
+    {
+        "id": "persistence-catch",
+        "type": "catch",
+        "z": "persistence-subflow",
+        "name": "Persistence Error Handler",
+        "scope": [
+            "read-state-file",
+            "process-read-data",
+            "prepare-write-data",
+            "write-state-file"
+        ],
+        "uncaught": false,
+        "x": 130,
+        "y": 220,
+        "wires": [
+            [
+                "handle-persistence-error"
+            ]
+        ]
+    },
+    {
+        "id": "handle-persistence-error",
+        "type": "function",
+        "z": "persistence-subflow",
+        "name": "Handle Persistence Error",
+        "func": "// Format the persistence error\nmsg.error = {\n    source: \"Data Persistence\",\n    message: msg.error?.message || \"Unknown error in data persistence\",\n    operation: msg.operation,\n    filename: msg.filename,\n    timestamp: new Date().toISOString()\n};\n\n// For read errors, create default data\nif (msg.operation === \"read\") {\n    msg.lastSync = null;\n    msg.payload = {\n        lastSync: null,\n        recordCount: 0,\n        syncStatus: \"error\",\n        error: msg.error.message\n    };\n} else {\n    // For write errors\n    msg.payload = {\n        error: true,\n        message: msg.error.message,\n        timestamp: msg.error.timestamp\n    };\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 220,
+        "wires": [
+            [
+                "log-persistence-error"
+            ]
+        ]
+    },
+    {
+        "id": "log-persistence-error",
+        "type": "debug",
+        "z": "persistence-subflow",
+        "name": "Log Persistence Error",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 690,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "d00697ab1142a221",
+        "type": "debug",
+        "z": "persistence-subflow",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 1060,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "persistence-input",
+        "type": "function",
+        "z": "persistence-subflow",
+        "name": "Prepare Storage Request",
+        "func": "// Determine operation type (read or write)\nconst isReadOperation = !msg.payload\n// Set the operation type\nmsg.operation = isReadOperation ? \"read\" : \"write\";\n\nconst dataDir = env.get(\"DATA_DIR\");\n\n// If this is a write operation, format the data to save\nif (!isReadOperation) {\n    // This is an update operation - store last sync time\n    msg.storageData = {\n        lastSync: new Date().toISOString(),\n        recordCount: Array.isArray(msg.payload) ? msg.payload.length : 0,\n        syncStatus: \"completed\"\n    };\n} else {\n    // This is a read operation - we'll retrieve the stored data\n    msg.storageData = null;\n}\n\n// Set the filename for persistence\nmsg.filename = `${dataDir}/hubspot_sync_state.json`;  \n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 210,
+        "y": 80,
+        "wires": [
+            [
+                "check-operation"
+            ]
+        ]
+    },
+    {
+        "id": "scheduler",
+        "type": "inject",
+        "z": "main-flow",
+        "name": "Daily Schedule",
+        "props": [
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "86400",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "hubspot_daily_sync",
+        "x": 120,
+        "y": 100,
+        "wires": [
+            [
+                "get-last-sync"
+            ]
+        ]
+    },
+    {
+        "id": "get-last-sync",
+        "type": "subflow:persistence-subflow",
+        "z": "main-flow",
+        "name": "Get Last Sync Time",
+        "env": [],
+        "x": 350,
+        "y": 60,
+        "wires": [
+            [
+                "fetch-hubspot-data"
+            ]
+        ]
+    },
+    {
+        "id": "fetch-hubspot-data",
+        "type": "subflow:hubspot-data-subflow",
+        "z": "main-flow",
+        "name": "Fetch HubSpot Data",
+        "env": [],
+        "x": 580,
+        "y": 60,
+        "wires": [
+            [
+                "process-data"
+            ]
+        ]
+    },
+    {
+        "id": "process-data",
+        "type": "subflow:data-processing-subflow",
+        "z": "main-flow",
+        "name": "Process & Filter Data",
+        "env": [],
+        "x": 820,
+        "y": 60,
+        "wires": [
+            [
+                "check-changes"
+            ]
+        ]
+    },
+    {
+        "id": "check-changes",
+        "type": "function",
+        "z": "main-flow",
+        "name": "Check for Changes",
+        "func": "// Check if there are changes to notify about\nconst data = msg.payload;\n\nif (Array.isArray(data) && data.length > 0) {\n    return msg;\n} else {\n    // No changes to notify about\n    return null;\n}",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1050,
+        "y": 60,
+        "wires": [
+            [
+                "send-notifications",
+                "update-last-sync"
+            ]
+        ]
+    },
+    {
+        "id": "send-notifications",
+        "type": "subflow:notification-subflow",
+        "z": "main-flow",
+        "name": "Send Email Notifications",
+        "env": [],
+        "x": 1350,
+        "y": 60,
+        "wires": [
+            [
+                "log-completion"
+            ]
+        ]
+    },
+    {
+        "id": "update-last-sync",
+        "type": "subflow:persistence-subflow",
+        "z": "main-flow",
+        "name": "Update Last Sync Time",
+        "env": [],
+        "x": 1370,
+        "y": 180,
+        "wires": [
+            [
+                "log-completion"
+            ]
+        ]
+    },
+    {
+        "id": "log-completion",
+        "type": "debug",
+        "z": "main-flow",
+        "name": "Log Completion",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1670,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "main-flow-error",
+        "type": "catch",
+        "z": "main-flow",
+        "name": "Main Flow Error Handler",
+        "scope": null,
+        "uncaught": false,
+        "x": 130,
+        "y": 200,
+        "wires": [
+            [
+                "log-error",
+                "prepare-error-notification"
+            ]
+        ]
+    },
+    {
+        "id": "log-error",
+        "type": "debug",
+        "z": "main-flow",
+        "name": "Log Error",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 370,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "prepare-error-notification",
+        "type": "function",
+        "z": "main-flow",
+        "name": "Prepare Error Notification",
+        "func": "// Prepare error message for email notification\nmsg.payload = {\n    subject: \"HubSpot Integration Error\",\n    error: msg.error,\n    message: msg.error.message || \"Unknown error\",\n    timestamp: new Date().toISOString(),\n    source: msg.error.source || \"Unknown source\"\n};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 240,
+        "wires": [
+            [
+                "error-notification"
+            ]
+        ]
+    },
+    {
+        "id": "error-notification",
+        "type": "subflow:notification-subflow",
+        "z": "main-flow",
+        "name": "Send Error Notification",
+        "env": [],
+        "x": 640,
+        "y": 240,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "manual-trigger",
+        "type": "inject",
+        "z": "main-flow",
+        "name": "Manual Trigger",
+        "props": [
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "manual_sync",
+        "x": 120,
+        "y": 40,
+        "wires": [
+            [
+                "get-last-sync"
+            ]
+        ]
+    }
+]
