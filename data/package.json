@@ -1,0 +1,10 @@
+{
+    "name": "node-red-project",
+    "description": "A Node-RED Project",
+    "version": "0.0.1",
+    "private": true,
+    "dependencies": {
+        "@vergissberlin/node-red-contrib-mjml": "~1.1.17",
+        "node-red-node-email": "~3.0.3"
+    }
+}
