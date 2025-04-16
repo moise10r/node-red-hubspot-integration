@@ -67,7 +67,7 @@ Before running this flow, you'll need:
 
 4. Start the container:
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 5. Access Node-RED at http://localhost:1880
