@@ -275,7 +275,7 @@
         "type": "function",
         "z": "hubspot-data-subflow",
         "name": "Extract Contact Data",
-        "func": "// Extract relevant data from the HubSpot API response\nconst response = msg.payload;\n\nif (response && response.results && Array.isArray(response.results)) {\n    // Transform the data structure for easier processing\n    msg.payload = response.results.map(contact => {\n        return {\n            id: contact.id,\n            properties: contact.properties,\n            createdAt: contact.createdAt,\n            updatedAt: contact.updatedAt\n        };\n    });\n    \n    // Store pagination info for potential batch processing\n    if (response.paging) {\n        msg.paging = response.paging;\n    }\n    \n    return msg;\n} else {\n    // No results or unexpected format\n    msg.payload = [];\n    return msg;\n}",
+        "func": "// Extract relevant data from the HubSpot API response\nconst response = msg.payload;\n\nif (response && response.results && Array.isArray(response.results)) {\n    // Transform the data structure to be easly processed\n    msg.payload = response.results.map(contact => {\n        return {\n            id: contact.id,\n            properties: contact.properties,\n            createdAt: contact.createdAt,\n            updatedAt: contact.updatedAt\n        };\n    });\n    \n    // we store pagination info for batch processing\n    if (response.paging) {\n        msg.paging = response.paging;\n    }\n    \n    return msg;\n} else {\n    // No results or unexpected format\n    msg.payload = [];\n    return msg;\n}",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -364,7 +364,7 @@
         "type": "function",
         "z": "data-processing-subflow",
         "name": "Validate Input Data",
-        "func": "// Validate input data format\nif (!Array.isArray(msg.payload)) {\n    msg.payload = [];\n    node.warn(\"Input data is not an array. Converting to empty array.\");\n}\n\n// Pass the data forward\nreturn msg;",
+        "func": "// Validate input data format\nif (!Array.isArray(msg.payload)) {\n    msg.payload = [];\n    node.warn(\"Input data is not an array. Converting to empty array.\");\n}\n\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -384,7 +384,7 @@
         "type": "function",
         "z": "data-processing-subflow",
         "name": "Filter Contacts",
-        "func": "// Filter contacts based on criteria\nconst contacts = msg.payload;\n\nmsg.payload = contacts.filter(contact => {\n    // Check if the contact has an email\n    if (!contact.properties.email) {\n        return false;\n    }\n    \n      // Filter based on industries\n    const industry = contact.properties.industry?.toLowerCase();\n    if (industry) {\n        return ['technology', 'healthcare', 'software', 'medical'].some(\n            targetIndustry => industry.includes(targetIndustry)\n        );\n    }\n    return true;\n});\n\nreturn msg;",
+        "func": "const contacts = msg.payload;\n\nmsg.payload = contacts.filter(contact => {\n    // Check if the contact has an email\n    if (!contact.properties.email) {\n        return false;\n    }\n    \n    // Filter based on industries\n    const industry = contact.properties.industry?.toLowerCase();\n    if (industry) {\n        return ['technology', 'healthcare', 'software', 'medical'].some(\n            targetIndustry => industry.includes(targetIndustry)\n        );\n    }\n    return true; // Here we return true because we want to include all by default\n});\n\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -443,6 +443,7 @@
         "name": "Format Error",
         "func": "// Ensure error is properly formatted\nif (!msg.error) {\n    msg.error = {\n        source: \"Data Processing\",\n        message: msg.error?.message || \"Unknown error in data processing\"\n    };\n}\n\nmsg.payload = {\n    error: true,\n    message: msg.error.message,\n    timestamp: new Date().toISOString()\n};\n\nreturn msg;",
         "outputs": 1,
+        "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
@@ -497,7 +498,7 @@
         "type": "function",
         "z": "notification-subflow",
         "name": "Validate Email Config",
-        "func": "const email = msg.payload;\n\n// Validate input\nif (!email || typeof email !== 'object') {\n    node.error(\"Invalid email format: email must be an object\", msg);\n    return null;\n}\n\n\nif (!email.to) {\n    node.warn(\"Missing recipient (to) field in email\");\n}\nmsg = {\n    to: email.to,\n    topic: email.subject,\n    payload: email.html?.trim()\n}\nreturn msg;",
+        "func": "const emailObj = msg.payload;\n\n// Validate input\nif (!emailObj || typeof emailObj !== 'object') {\n    node.error(\"Invalid email format: email must be an object\", msg);\n    return null;\n}\n\n\nif (!emailObj.to) {\n    node.warn(\"Missing recipient (to) field in email\");\n}\nmsg = {\n    to: emailObj.to,\n    topic: emailObj.subject,\n    payload: emailObj.html?.trim()\n}\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -955,7 +956,6 @@
         "y": 280,
         "wires": [
             [
-                "log-error",
                 "prepare-error-notification"
             ]
         ]
@@ -973,8 +973,8 @@
         "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
-        "x": 390,
-        "y": 220,
+        "x": 630,
+        "y": 280,
         "wires": []
     },
     {
@@ -984,27 +984,18 @@
         "name": "Prepare Error Notification",
         "func": "// Prepare error message for email notification\nmsg.payload = {\n    subject: \"HubSpot Integration Error\",\n    error: msg.error,\n    message: msg.error.message || \"Unknown error\",\n    timestamp: new Date().toISOString(),\n    source: msg.error.source || \"Unknown source\"\n};\nreturn msg;",
         "outputs": 1,
+        "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 410,
-        "y": 340,
+        "x": 390,
+        "y": 280,
         "wires": [
             [
-                "error-notification"
+                "log-error"
             ]
         ]
-    },
-    {
-        "id": "error-notification",
-        "type": "subflow:notification-subflow",
-        "z": "main-flow",
-        "name": "Send Error Notification",
-        "env": [],
-        "x": 680,
-        "y": 320,
-        "wires": []
     },
     {
         "id": "manual-trigger",
