@@ -71,7 +71,7 @@
   {
     "id": "notification-subflow",
     "type": "subflow",
-    "name": "Email Notification",
+    "name": "Email Preparation/Sending",
     "info": "# Email Notification Subflow\nSends emails based on processed data using node-red-node-email.",
     "category": "",
     "in": [
@@ -122,6 +122,22 @@
     "env": [],
     "meta": {},
     "color": "#DDAA99"
+  },
+  {
+    "id": "2e2aa528beaea1af",
+    "type": "group",
+    "z": "main-flow",
+    "name": "Triggers",
+    "style": {
+      "fill": "#7fb7df",
+      "label": true,
+      "color": "#ffffff"
+    },
+    "nodes": ["scheduler", "manual-trigger"],
+    "x": 14,
+    "y": 19,
+    "w": 232,
+    "h": 142
   },
   {
     "id": "hubspot-data-input",
@@ -282,7 +298,7 @@
     "type": "function",
     "z": "data-processing-subflow",
     "name": "Filter Contacts",
-    "func": "// Filter contacts based on criteria\nconst contacts = msg.payload;\n\nmsg.payload = contacts.filter(contact => {\n    // Check if the contact has an email\n    if (!contact.properties.email) {\n        return false;\n    }\n    \n      // Filter for technology or healthcare industries\n    const industry = contact.properties.industry?.toLowerCase();\n    if (industry) {\n        return ['technology', 'healthcare', 'software', 'medical'].some(\n            targetIndustry => industry.includes(targetIndustry)\n        );\n    }\n    return true;\n});\n\nreturn msg;",
+    "func": "// Filter contacts based on criteria\nconst contacts = msg.payload;\n\nmsg.payload = contacts.filter(contact => {\n    // Check if the contact has an email\n    if (!contact.properties.email) {\n        return false;\n    }\n    \n      // Filter based on industries\n    const industry = contact.properties.industry?.toLowerCase();\n    if (industry) {\n        return ['technology', 'healthcare', 'software', 'medical'].some(\n            targetIndustry => industry.includes(targetIndustry)\n        );\n    }\n    return true;\n});\n\nreturn msg;",
     "outputs": 1,
     "timeout": "",
     "noerr": 0,
@@ -456,8 +472,8 @@
     "secure": true,
     "tls": true,
     "name": "",
-    "dname": "Send Email Notification",
-    "x": 1110,
+    "dname": "Send Email",
+    "x": 1070,
     "y": 80,
     "wires": []
   },
@@ -634,6 +650,7 @@
     "id": "scheduler",
     "type": "inject",
     "z": "main-flow",
+    "g": "2e2aa528beaea1af",
     "name": "Daily Schedule",
     "props": [
       {
@@ -646,8 +663,8 @@
     "once": false,
     "onceDelay": 0.1,
     "topic": "hubspot_daily_sync",
-    "x": 120,
-    "y": 100,
+    "x": 140,
+    "y": 120,
     "wires": [["get-last-sync"]]
   },
   {
@@ -700,9 +717,9 @@
     "id": "send-notifications",
     "type": "subflow:notification-subflow",
     "z": "main-flow",
-    "name": "Send Email Notifications",
+    "name": "Email Preparation/Sending",
     "env": [],
-    "x": 1350,
+    "x": 1360,
     "y": 60,
     "wires": []
   },
@@ -741,7 +758,7 @@
     "scope": null,
     "uncaught": false,
     "x": 130,
-    "y": 200,
+    "y": 280,
     "wires": [["log-error", "prepare-error-notification"]]
   },
   {
@@ -757,8 +774,8 @@
     "targetType": "full",
     "statusVal": "",
     "statusType": "auto",
-    "x": 370,
-    "y": 160,
+    "x": 390,
+    "y": 220,
     "wires": []
   },
   {
@@ -772,8 +789,8 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 390,
-    "y": 240,
+    "x": 410,
+    "y": 340,
     "wires": [["error-notification"]]
   },
   {
@@ -782,14 +799,15 @@
     "z": "main-flow",
     "name": "Send Error Notification",
     "env": [],
-    "x": 640,
-    "y": 240,
+    "x": 680,
+    "y": 320,
     "wires": []
   },
   {
     "id": "manual-trigger",
     "type": "inject",
     "z": "main-flow",
+    "g": "2e2aa528beaea1af",
     "name": "Manual Trigger",
     "props": [
       {
@@ -802,8 +820,8 @@
     "once": false,
     "onceDelay": 0.1,
     "topic": "manual_sync",
-    "x": 120,
-    "y": 40,
+    "x": 140,
+    "y": 60,
     "wires": [["get-last-sync"]]
   }
 ]

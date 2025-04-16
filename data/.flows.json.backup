@@ -24,8 +24,8 @@
         ],
         "out": [
             {
-                "x": 1160,
-                "y": 80,
+                "x": 1180,
+                "y": 60,
                 "wires": [
                     {
                         "id": "extract-contact-data",
@@ -71,7 +71,7 @@
     {
         "id": "notification-subflow",
         "type": "subflow",
-        "name": "Email Notification",
+        "name": "Email Preparation/Sending",
         "info": "# Email Notification Subflow\nSends emails based on processed data using node-red-node-email.",
         "category": "",
         "in": [
@@ -122,6 +122,25 @@
         "env": [],
         "meta": {},
         "color": "#DDAA99"
+    },
+    {
+        "id": "2e2aa528beaea1af",
+        "type": "group",
+        "z": "main-flow",
+        "name": "Triggers",
+        "style": {
+            "fill": "#7fb7df",
+            "label": true,
+            "color": "#ffffff"
+        },
+        "nodes": [
+            "scheduler",
+            "manual-trigger"
+        ],
+        "x": 14,
+        "y": 19,
+        "w": 232,
+        "h": 142
     },
     {
         "id": "hubspot-data-input",
@@ -210,12 +229,10 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 960,
+        "x": 980,
         "y": 60,
         "wires": [
-            [
-                "ad42e50bda737090"
-            ]
+            []
         ]
     },
     {
@@ -229,8 +246,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 910,
-        "y": 220,
+        "x": 970,
+        "y": 160,
         "wires": [
             []
         ]
@@ -291,23 +308,6 @@
         "wires": []
     },
     {
-        "id": "ad42e50bda737090",
-        "type": "debug",
-        "z": "hubspot-data-subflow",
-        "name": "Hubspot error",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "payload",
-        "targetType": "msg",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1180,
-        "y": 160,
-        "wires": []
-    },
-    {
         "id": "data-processing-input",
         "type": "function",
         "z": "data-processing-subflow",
@@ -332,7 +332,7 @@
         "type": "function",
         "z": "data-processing-subflow",
         "name": "Filter Contacts",
-        "func": "// Filter contacts based on criteria\nconst contacts = msg.payload;\n\nmsg.payload = contacts.filter(contact => {\n    // Check if the contact has an email\n    if (!contact.properties.email) {\n        return false;\n    }\n    \n      // Filter for technology or healthcare industries\n    const industry = contact.properties.industry?.toLowerCase();\n    if (industry) {\n        return ['technology', 'healthcare', 'software', 'medical'].some(\n            targetIndustry => industry.includes(targetIndustry)\n        );\n    }\n    return true;\n});\n\nreturn msg;",
+        "func": "// Filter contacts based on criteria\nconst contacts = msg.payload;\n\nmsg.payload = contacts.filter(contact => {\n    // Check if the contact has an email\n    if (!contact.properties.email) {\n        return false;\n    }\n    \n      // Filter based on industries\n    const industry = contact.properties.industry?.toLowerCase();\n    if (industry) {\n        return ['technology', 'healthcare', 'software', 'medical'].some(\n            targetIndustry => industry.includes(targetIndustry)\n        );\n    }\n    return true;\n});\n\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -456,8 +456,7 @@
         "y": 80,
         "wires": [
             [
-                "send-email",
-                "9c35ecf0137b19a0"
+                "send-email"
             ]
         ]
     },
@@ -513,23 +512,6 @@
         "statusType": "auto",
         "x": 590,
         "y": 280,
-        "wires": []
-    },
-    {
-        "id": "9c35ecf0137b19a0",
-        "type": "debug",
-        "z": "notification-subflow",
-        "name": "Email error",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "true",
-        "targetType": "full",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1110,
-        "y": 180,
         "wires": []
     },
     {
@@ -637,9 +619,7 @@
         "x": 930,
         "y": 40,
         "wires": [
-            [
-                "2953715f82bb24a2"
-            ]
+            []
         ]
     },
     {
@@ -774,26 +754,10 @@
         ]
     },
     {
-        "id": "2953715f82bb24a2",
-        "type": "debug",
-        "z": "persistence-subflow",
-        "name": "process read data",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "payload",
-        "targetType": "msg",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 1330,
-        "y": 80,
-        "wires": []
-    },
-    {
         "id": "scheduler",
         "type": "inject",
         "z": "main-flow",
+        "g": "2e2aa528beaea1af",
         "name": "Daily Schedule",
         "props": [
             {
@@ -806,8 +770,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "hubspot_daily_sync",
-        "x": 120,
-        "y": 100,
+        "x": 140,
+        "y": 120,
         "wires": [
             [
                 "get-last-sync"
@@ -881,9 +845,9 @@
         "id": "send-notifications",
         "type": "subflow:notification-subflow",
         "z": "main-flow",
-        "name": "Send Email Notifications",
+        "name": "Email Preparation/Sending",
         "env": [],
-        "x": 1350,
+        "x": 1360,
         "y": 60,
         "wires": []
     },
@@ -926,7 +890,7 @@
         "scope": null,
         "uncaught": false,
         "x": 130,
-        "y": 200,
+        "y": 280,
         "wires": [
             [
                 "log-error",
@@ -947,8 +911,8 @@
         "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
-        "x": 370,
-        "y": 160,
+        "x": 390,
+        "y": 220,
         "wires": []
     },
     {
@@ -962,8 +926,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 390,
-        "y": 240,
+        "x": 410,
+        "y": 340,
         "wires": [
             [
                 "error-notification"
@@ -976,14 +940,15 @@
         "z": "main-flow",
         "name": "Send Error Notification",
         "env": [],
-        "x": 640,
-        "y": 240,
+        "x": 680,
+        "y": 320,
         "wires": []
     },
     {
         "id": "manual-trigger",
         "type": "inject",
         "z": "main-flow",
+        "g": "2e2aa528beaea1af",
         "name": "Manual Trigger",
         "props": [
             {
@@ -996,8 +961,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "manual_sync",
-        "x": 120,
-        "y": 40,
+        "x": 140,
+        "y": 60,
         "wires": [
             [
                 "get-last-sync"
