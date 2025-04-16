@@ -40,7 +40,7 @@ Before running this flow, you'll need:
 
 3. Clone the repository:
    ```bash
-   git clone https://github.com/moise10r/node-red-hubspot-integration.git
+   git clone git@github.com:moise10r/node-red-hubspot-integration.git
    cd node-red-hubspot-integration
    ```
 
@@ -53,7 +53,7 @@ Before running this flow, you'll need:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/moise10r/node-red-hubspot-integration.git
+   git clone git@github.com:moise10r/node-red-hubspot-integration.git
    cd node-red-hubspot-integration
    ```
 
