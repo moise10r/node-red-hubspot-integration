@@ -10,7 +10,8 @@
     "id": "hubspot-data-subflow",
     "type": "subflow",
     "name": "HubSpot Data Collection",
-    "info": "# HubSpot Data Collection Subflow\nHandles authentication and retrieval of data from the HubSpot CRM API.",
+    "info": "# HubSpot Data Collection Subflow\n\n## Overview\nThe HubSpot Data Collection Subflow is designed to handle authentication and retrieval of data from the HubSpot CRM API. It provides a streamlined process for fetching contact data from HubSpot and transforming it into a usable format for downstream processing.\n\n## Purpose\nThis subflow encapsulates all the logic needed to:\n- Connect to the HubSpot CRM API\n- Fetch contact records\n- Filter by last modification date for incremental updates\n- Process and format the response data\n- Handle API errors gracefully\n\n## Flow Structure\n\n### Input\nThe subflow accepts messages containing optional `lastSync` timestamp to enable incremental data collection.\n\n### Core Components\n1. **Prepare API Request** (`hubspot-data-input`)\n   - Configures the API request with appropriate parameters\n   - Adds incremental sync filter if a `lastSync` value is provided\n   - Builds the request URL with proper encoding\n\n2. **HubSpot API Request** (`hubspot-http-request`)\n   - Performs the HTTP request to the HubSpot API\n   - Uses bearer token authentication\n   - Returns the response as a JavaScript object\n\n3. **Check Response** (`check-api-response`)\n   - Evaluates the API response status code\n   - Routes successful responses (200) to data extraction\n   - Routes errors to the error handler\n\n4. **Extract Contact Data** (`extract-contact-data`)\n   - Transforms the HubSpot API response into a simplified format\n   - Maps contact data to a consistent structure\n   - Preserves pagination information for batch processing\n   - Returns empty array if no results are found\n\n5. **Error Handling**\n   - **Handle API Error** (`handle-api-error`) - Formats error information from failed API calls\n   - **HubSpot API Error Handler** (`hubspot-data-catch`) - Catches errors from API-related nodes\n   - **Format Error** (`format-api-error`) - Ensures consistent error format\n   - **Log API Error** (`debug-api-error`) - Logs errors for monitoring\n\n## Usage\n\n### Basic Usage\nTo fetch contacts from HubSpot:\n1. Send a message to the subflow input\n2. Receive transformed contact data in the `msg.payload` of the output\n\n### Incremental Updates\nTo fetch only contacts updated since the last sync:\n1. Include `msg.lastSync` in your input message with an ISO timestamp\n2. The subflow will filter results to only include contacts modified after that time\n\n### Output Format\nThe subflow outputs contact data in the following format:\n```json\n[\n  {\n    \"id\": \"contact-id\",\n    \"properties\": {\n      \"email\": \"contact@example.com\",\n      \"firstname\": \"Moise\",\n      \"lastname\": \"Rushanika\",\n      \"company\": \"Omnipeak\",\n      \"industry\": \"Technology\",\n      \"lastmodifieddate\": \"2023-04-16T12:00:00Z\"\n    },\n    \"createdAt\": \"2023-01-01T00:00:00Z\",\n    \"updatedAt\": \"2023-04-16T12:00:00Z\"\n  },\n  // Additional contacts...\n]\n```\n\n### Pagination\nFor large data sets, the subflow preserves pagination information:\n- `msg.paging` contains the pagination data from the HubSpot API\n- This can be used in subsequent requests to fetch additional pages of data\n\n## Error Handling\nWhen API errors occur:\n- Detailed error information is captured and formatted\n- The error is logged with source information and timestamp\n- Error details include the HTTP status code and response payload\n\n## Configuration Requirements\nThe subflow requires:\n- A valid HubSpot API bearer token for authentication\n- Network access to the HubSpot API endpoints\n\n## Implementation Notes\n- The subflow fetches a maximum of 20 contacts per request\n- Contact data includes email, firstname, lastname, company, industry, and lastmodifieddate properties\n- Error catching is implemented for API request and data processing nodes",
+    "category": "",
     "in": [
       {
         "x": 40,
@@ -33,13 +34,16 @@
           }
         ]
       }
-    ]
+    ],
+    "env": [],
+    "meta": {},
+    "color": "#DDAA99"
   },
   {
     "id": "data-processing-subflow",
     "type": "subflow",
     "name": "Data Processing",
-    "info": "# Data Processing Subflow\nFilters and transforms the data retrieved from HubSpot API.",
+    "info": "# Data Persistence Subflow\n\n## Overview\n\nThe Data Persistence Subflow provides a reusable mechanism for storing and retrieving state data in a Node-RED flow. It's designed to support incremental processing by maintaining state between flow executions.\n\n## Purpose\n\nThis subflow handles two primary operations:\n- **Reading** state data from a file\n- **Writing** updated state data to a file\n\nThis persistent storage is particularly useful for:\n- Tracking the last synchronization time\n- Maintaining record counts\n- Preserving sync status between runs\n- Enabling incremental data processing\n\n## Subflow Architecture\n\n\n| ID | Node Type | Name | Purpose |\n|---|---|---|---|\n| persistence-input | function | Prepare Storage Request | Entry point that determines operation type |\n| check-operation | switch | Read or Write | Routes flow based on operation type |\n| read-state-file | file in | Read State File | Reads data from the state file |\n| process-read-data | function | Process Read Data | Parses and structures data from file |\n| prepare-write-data | function | Prepare Write Data | Formats data for writing |\n| write-state-file | file | Write State File | Writes data to state file |\n| persistence-catch | catch | Persistence Error Handler | Catches errors in the subflow |\n| handle-persistence-error | function | Handle Persistence Error | Processes caught errors |\n| log-persistence-error | debug | Log Persistence Error | Logs error information |\n| OutputLog | debug | Write File Successfully | Confirms successful writes |\n\n## Inputs and Outputs\n\n### Subflow Input\n- **Input Format**: The subflow expects a message object that may or may not contain a payload\n- If `msg.payload` exists, the operation is assumed to be a **write**\n- If `msg.payload` is empty/null, the operation is assumed to be a **read**\n\n### Subflow Output\n- For **read** operations:\n  - `msg.payload`: Contains the parsed state data (lastSync, recordCount, syncStatus)\n  - `msg.lastSync`: Contains the last synchronization timestamp for convenience\n  - `msg.originalPayload`: Preserves any original payload data\n- For **write** operations:\n  - Debug output confirming successful write operation\n\n## Flow Logic\n\n### Read Operation\n1. `persistence-input` determines this is a read operation\n2. `check-operation` routes to read path\n3. `read-state-file` attempts to read from the configured file\n4. `process-read-data` parses JSON and structures data\n5. Output provides the state data to the main flow\n\n### Write Operation\n1. `persistence-input` determines this is a write operation\n2. `check-operation` routes to write path\n3. `prepare-write-data` formats the data for storage\n4. `write-state-file` writes the data to disk\n5. `Write File Successfully` confirms the operation\n\n### Error Handling\nIf any errors occur during read/write operations:\n1. `persistence-catch` captures the error\n2. `handle-persistence-error` formats error details\n3. `log-persistence-error` logs the error information\n4. For read errors, a default state object is provided\n\n## Configuration\n\nThe subflow uses an environment variable:\n- `DATA_DIR`: Directory where state files are stored\n\nThe default state file is named `hubspot_sync_state.json` and is stored in the `DATA_DIR` directory.\n\n## State Data Structure\n\n```json\n{\n  \"lastSync\": \"2023-10-25T12:34:56.789Z\",\n  \"recordCount\": 42,\n  \"syncStatus\": \"completed\"\n}\n```\n\n- `lastSync`: ISO timestamp of last successful synchronization\n- `recordCount`: Number of records processed in last sync\n- `syncStatus`: Status of sync operation (\"completed\", \"error\", \"never_run\")\n\n## Usage Examples\n\n### Reading State\nTo read the current state, inject a message with no payload:\n\n```javascript\nreturn { topic: \"read_state\" };  // Empty payload triggers read\n```\n\n### Writing State\nTo update the state after processing:\n\n```javascript\nmsg.payload = processedRecords;  // Any non-empty payload triggers write\nreturn msg;\n```\n\n## Error States\n\nIf errors occur during read operations, default values are provided:\n- `lastSync`: null\n- `recordCount`: 0\n- `syncStatus`: \"error\"\n- `error`: Contains the error message\n\n## Notes\n\n- The subflow automatically creates the state file directory if it doesn't exist\n- Writes always overwrite the entire file rather than appending\n- JSON parsing errors result in default state values",
     "category": "",
     "in": [
       {
@@ -72,7 +76,7 @@
     "id": "notification-subflow",
     "type": "subflow",
     "name": "Email Preparation/Sending",
-    "info": "# Email Notification Subflow\nSends emails based on processed data using node-red-node-email.",
+    "info": "# Email Notification Subflow\n\n## Overview\n\nThe Email Preparation/Sending subflow is designed to format and send email notifications based on processed contact data. This subflow utilizes the `node-red-node-email` module to handle email delivery.\n\n## Flow Structure\n\nThe subflow consists of the following components:\n\n1. **Input**: Receives contact data for email notifications\n2. **Format Email Message**: Prepares HTML email content for each contact\n3. **Split into individual emails**: Separates batch emails into individual messages\n4. **Validate Email Config**: Ensures email data is properly formatted\n5. **Send Email**: Transmits the email through SMTP\n6. **Error Handling**: Catches and logs any email delivery issues\n\n## Component Details\n\n### Format Email Message (function)\n\nThis function transforms incoming contact data into properly formatted email messages:\n\n- **Input**: Expects an array of contact objects in `msg.payload`\n- **Processing**: \n  - Validates that contacts exist and are in array format\n  - Generates HTML email content for each contact with styling\n  - Creates email objects with recipient, subject, and HTML content\n- **Output**: An array of email objects\n\n### Split into individual emails (split)\n\nThis node:\n- Takes the array of email objects\n- Splits them into individual messages\n- Sends each one to the validation step\n\n### Validate Email Config (function)\n\nThis function performs validation on each email object:\n\n- **Input**: Individual email object\n- **Processing**:\n  - Checks if the email object is properly formatted\n  - Validates required fields are present\n  - Restructures the message for the email node\n- **Output**: Valid email message or null if invalid\n\n### Send Email (e-mail)\n\nThis node handles the actual email transmission:\n\n- Uses SMTP protocol with Gmail's server (smtp.gmail.com)\n- Port: 465\n- Authentication: Basic\n- Security: TLS/SSL enabled\n\n### Error Handling\n\nThe subflow includes a comprehensive error handling system:\n\n- **Email Error Handler**: Catches errors from the Send Email node\n- **Log Email Error**: Formats error information including source, message, and timestamp\n- **Debug Email Error**: Logs the complete error details to the Node-RED debug panel\n\n\n\n## Notes\n\n- Error handling captures and logs any issues with email sending\n- The subflow can handle both single and multiple contact notifications\n- Emails are sent with \"HubSpot Contacts Update\" as the subject line",
     "category": "",
     "in": [
       {
@@ -94,7 +98,7 @@
     "id": "persistence-subflow",
     "type": "subflow",
     "name": "Data Persistence",
-    "info": "# Data Persistence Subflow\nHandles storing and retrieving state data for incremental processing.",
+    "info": "# Data Persistence Subflow\n\n## Overview\nThe Data Persistence Subflow is designed to handle storing and retrieving state data for incremental processing. It provides a standardized way to manage persistence in your flows, enabling consistent storage and retrieval of state information.\n\n## Purpose\nThis subflow encapsulates the logic needed to:\n- Read previous state data from a file\n- Process and provide state information to the main flow\n- Store updated state information after processing\n- Handle errors that may occur during persistence operations\n\n## Flow Structure\n\n### Input\nThe subflow accepts input messages and determines whether to perform a read or write operation based on message content.\n\n### Core Components\n1. **Prepare Storage Request** (`persistence-input`)\n   - Determines if this is a read or write operation\n   - Sets the appropriate filename for persistence\n   - Prepares data format for storage when writing\n\n2. **Read or Write Switch** (`check-operation`)\n   - Routes the message to either read or write path based on `msg.operation`\n\n3. **Read Path**\n   - **Read State File** (`read-state-file`) - Reads data from the persistence file\n   - **Process Read Data** (`process-read-data`) - Parses and formats the data for use in the main flow\n\n4. **Write Path**\n   - **Prepare Write Data** (`prepare-write-data`) - Formats data for storage\n   - **Write State File** (`write-state-file`) - Stores data to the persistence file\n   - **Write File Successfully** (`d00697ab1142a221`) - Debug node confirming successful write\n\n5. **Error Handling**\n   - **Persistence Error Handler** (`persistence-catch`) - Catches errors from persistence operations\n   - **Handle Persistence Error** (`handle-persistence-error`) - Formats errors and provides defaults\n   - **Log Persistence Error** (`log-persistence-error`) - Logs errors for monitoring\n\n## Usage\n\n### Reading State\nTo read the current state:\n1. Send a message to the subflow without a payload\n2. The subflow will return a message with:\n   - `msg.lastSync` - The timestamp of the last synchronization\n   - `msg.payload` - The complete sync data object\n\n### Writing State\nTo update the state:\n1. Send a message with a payload (typically your processed data)\n2. The subflow will:\n   - Create state information based on your data\n   - Store the current timestamp as `lastSync`\n   - Record the count of records processed\n   - Mark the `syncStatus` as \"completed\"\n\n### Error Handling\nIf errors occur during persistence operations:\n- For read errors: The subflow provides default state data\n- For write errors: Error information is returned in the payload\n- All errors are logged with detailed information\n\n## Configuration\nThe subflow expects an environment variable:\n- `DATA_DIR` - Directory path where state files will be stored\n\n## Default State Format\n```json\n{\n  \"lastSync\": \"2023-04-16T12:00:00Z\",\n  \"recordCount\": 123,\n  \"syncStatus\": \"completed\"\n}\n```\n\n## Implementation Details\n- State is stored in JSON format\n- Files are created if they don't exist\n- Default values are provided for first-run scenarios\n- Timestamps use ISO format for standardization",
     "category": "",
     "in": [
       {
@@ -138,6 +142,22 @@
     "y": 19,
     "w": 232,
     "h": 142
+  },
+  {
+    "id": "933e0bfe4c9c9f17",
+    "type": "group",
+    "z": "main-flow",
+    "name": "Get & Process data",
+    "style": {
+      "fill": "#c8e7a7",
+      "label": true,
+      "color": "#000000"
+    },
+    "nodes": ["fetch-hubspot-data", "process-data", "check-changes"],
+    "x": 454,
+    "y": 19,
+    "w": 712,
+    "h": 82
   },
   {
     "id": "hubspot-data-input",
@@ -222,6 +242,7 @@
     "name": "Handle API Error",
     "func": "// Process the error response from HubSpot API\nmsg.error = {\n    source: \"HubSpot API\",\n    statusCode: msg.statusCode,\n    payload: msg.payload,\n    message: `HubSpot API error: ${msg.statusCode} - ${JSON.stringify(msg.payload)}`\n};\n\n// Pass the error to the catch node\nthrow new Error(msg.error.message);",
     "outputs": 1,
+    "timeout": "",
     "noerr": 0,
     "initialize": "",
     "finalize": "",
@@ -675,12 +696,14 @@
     "env": [],
     "x": 350,
     "y": 60,
-    "wires": [["fetch-hubspot-data"]]
+    "wires": [["fetch-hubspot-data"]],
+    "info": "# Data Persistence Subflow\n\n## Overview\nThe Data Persistence Subflow is designed to handle storing and retrieving state data for incremental processing. It provides a standardized way to manage persistence in your flows, enabling consistent storage and retrieval of state information.\n\n## Purpose\nThis subflow encapsulates the logic needed to:\n- Read previous state data from a file\n- Process and provide state information to the main flow\n- Store updated state information after processing\n- Handle errors that may occur during persistence operations\n\n## Flow Structure\n\n### Input\nThe subflow accepts input messages and determines whether to perform a read or write operation based on message content.\n\n### Core Components\n1. **Prepare Storage Request** (`persistence-input`)\n   - Determines if this is a read or write operation\n   - Sets the appropriate filename for persistence\n   - Prepares data format for storage when writing\n\n2. **Read or Write Switch** (`check-operation`)\n   - Routes the message to either read or write path based on `msg.operation`\n\n3. **Read Path**\n   - **Read State File** (`read-state-file`) - Reads data from the persistence file\n   - **Process Read Data** (`process-read-data`) - Parses and formats the data for use in the main flow\n\n4. **Write Path**\n   - **Prepare Write Data** (`prepare-write-data`) - Formats data for storage\n   - **Write State File** (`write-state-file`) - Stores data to the persistence file\n   - **Write File Successfully** (`d00697ab1142a221`) - Debug node confirming successful write\n\n5. **Error Handling**\n   - **Persistence Error Handler** (`persistence-catch`) - Catches errors from persistence operations\n   - **Handle Persistence Error** (`handle-persistence-error`) - Formats errors and provides defaults\n   - **Log Persistence Error** (`log-persistence-error`) - Logs errors for monitoring\n\n## Usage\n\n### Reading State\nTo read the current state:\n1. Send a message to the subflow without a payload\n2. The subflow will return a message with:\n   - `msg.lastSync` - The timestamp of the last synchronization\n   - `msg.payload` - The complete sync data object\n\n### Writing State\nTo update the state:\n1. Send a message with a payload (typically your processed data)\n2. The subflow will:\n   - Create state information based on your data\n   - Store the current timestamp as `lastSync`\n   - Record the count of records processed\n   - Mark the `syncStatus` as \"completed\"\n\n### Error Handling\nIf errors occur during persistence operations:\n- For read errors: The subflow provides default state data\n- For write errors: Error information is returned in the payload\n- All errors are logged with detailed information\n\n## Configuration\nThe subflow expects an environment variable:\n- `DATA_DIR` - Directory path where state files will be stored\n\n## Default State Format\n```json\n{\n  \"lastSync\": \"2023-04-16T12:00:00Z\",\n  \"recordCount\": 123,\n  \"syncStatus\": \"completed\"\n}\n```\n\n## Implementation Details\n- State is stored in JSON format\n- Files are created if they don't exist\n- Default values are provided for first-run scenarios\n- Timestamps use ISO format for standardization"
   },
   {
     "id": "fetch-hubspot-data",
     "type": "subflow:hubspot-data-subflow",
     "z": "main-flow",
+    "g": "933e0bfe4c9c9f17",
     "name": "Fetch HubSpot Data",
     "env": [],
     "x": 580,
@@ -691,6 +714,7 @@
     "id": "process-data",
     "type": "subflow:data-processing-subflow",
     "z": "main-flow",
+    "g": "933e0bfe4c9c9f17",
     "name": "Process & Filter Data",
     "env": [],
     "x": 820,
@@ -701,6 +725,7 @@
     "id": "check-changes",
     "type": "function",
     "z": "main-flow",
+    "g": "933e0bfe4c9c9f17",
     "name": "Check for Changes",
     "func": "// Check if there are changes to notify about\nconst data = msg.payload;\n\nif (Array.isArray(data) && data.length > 0) {\n    return msg;\n} else {\n    // No changes to notify about\n    return null;\n}",
     "outputs": 1,

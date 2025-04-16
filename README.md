@@ -125,7 +125,7 @@ The flow uses Node-RED's secure credential storage:
 To modify the filtering criteria for contacts:
 
 1. Open the `Filter Contacts` Function Node under `Data Processing` Subflow
-2. Edit the `Filter Contacts` filter function to match your criteria
+2. Edit the `Filter Contacts` filter function and update it based your criteria
 3. Save changes
 
 ### 5. Configure Schedule
