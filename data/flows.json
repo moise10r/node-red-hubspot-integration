@@ -1,852 +1,1055 @@
 [
-  {
-    "id": "main-flow",
-    "type": "tab",
-    "label": "Main Flow",
-    "disabled": false,
-    "info": "# Main Flow\nThis is the primary flow that orchestrates the entire HubSpot integration process."
-  },
-  {
-    "id": "hubspot-data-subflow",
-    "type": "subflow",
-    "name": "HubSpot Data Collection",
-    "info": "# HubSpot Data Collection Subflow\n\n## Overview\nThe HubSpot Data Collection Subflow is designed to handle authentication and retrieval of data from the HubSpot CRM API. It provides a streamlined process for fetching contact data from HubSpot and transforming it into a usable format for downstream processing.\n\n## Purpose\nThis subflow encapsulates all the logic needed to:\n- Connect to the HubSpot CRM API\n- Fetch contact records\n- Filter by last modification date for incremental updates\n- Process and format the response data\n- Handle API errors gracefully\n\n## Flow Structure\n\n### Input\nThe subflow accepts messages containing optional `lastSync` timestamp to enable incremental data collection.\n\n### Core Components\n1. **Prepare API Request** (`hubspot-data-input`)\n   - Configures the API request with appropriate parameters\n   - Adds incremental sync filter if a `lastSync` value is provided\n   - Builds the request URL with proper encoding\n\n2. **HubSpot API Request** (`hubspot-http-request`)\n   - Performs the HTTP request to the HubSpot API\n   - Uses bearer token authentication\n   - Returns the response as a JavaScript object\n\n3. **Check Response** (`check-api-response`)\n   - Evaluates the API response status code\n   - Routes successful responses (200) to data extraction\n   - Routes errors to the error handler\n\n4. **Extract Contact Data** (`extract-contact-data`)\n   - Transforms the HubSpot API response into a simplified format\n   - Maps contact data to a consistent structure\n   - Preserves pagination information for batch processing\n   - Returns empty array if no results are found\n\n5. **Error Handling**\n   - **Handle API Error** (`handle-api-error`) - Formats error information from failed API calls\n   - **HubSpot API Error Handler** (`hubspot-data-catch`) - Catches errors from API-related nodes\n   - **Format Error** (`format-api-error`) - Ensures consistent error format\n   - **Log API Error** (`debug-api-error`) - Logs errors for monitoring\n\n## Usage\n\n### Basic Usage\nTo fetch contacts from HubSpot:\n1. Send a message to the subflow input\n2. Receive transformed contact data in the `msg.payload` of the output\n\n### Incremental Updates\nTo fetch only contacts updated since the last sync:\n1. Include `msg.lastSync` in your input message with an ISO timestamp\n2. The subflow will filter results to only include contacts modified after that time\n\n### Output Format\nThe subflow outputs contact data in the following format:\n```json\n[\n  {\n    \"id\": \"contact-id\",\n    \"properties\": {\n      \"email\": \"contact@example.com\",\n      \"firstname\": \"Moise\",\n      \"lastname\": \"Rushanika\",\n      \"company\": \"Omnipeak\",\n      \"industry\": \"Technology\",\n      \"lastmodifieddate\": \"2023-04-16T12:00:00Z\"\n    },\n    \"createdAt\": \"2023-01-01T00:00:00Z\",\n    \"updatedAt\": \"2023-04-16T12:00:00Z\"\n  },\n  // Additional contacts...\n]\n```\n\n### Pagination\nFor large data sets, the subflow preserves pagination information:\n- `msg.paging` contains the pagination data from the HubSpot API\n- This can be used in subsequent requests to fetch additional pages of data\n\n## Error Handling\nWhen API errors occur:\n- Detailed error information is captured and formatted\n- The error is logged with source information and timestamp\n- Error details include the HTTP status code and response payload\n\n## Configuration Requirements\nThe subflow requires:\n- A valid HubSpot API bearer token for authentication\n- Network access to the HubSpot API endpoints\n\n## Implementation Notes\n- The subflow fetches a maximum of 20 contacts per request\n- Contact data includes email, firstname, lastname, company, industry, and lastmodifieddate properties\n- Error catching is implemented for API request and data processing nodes",
-    "category": "",
-    "in": [
-      {
-        "x": 40,
+    {
+        "id": "main-flow",
+        "type": "tab",
+        "label": "Main Flow",
+        "disabled": false,
+        "info": "# Main Flow\nThis is the primary flow that orchestrates the entire HubSpot integration process."
+    },
+    {
+        "id": "hubspot-data-subflow",
+        "type": "subflow",
+        "name": "HubSpot Data Collection",
+        "info": "# HubSpot Data Collection Subflow\n\n## Overview\nThe HubSpot Data Collection Subflow is designed to handle authentication and retrieval of data from the HubSpot CRM API. It provides a streamlined process for fetching contact data from HubSpot and transforming it into a usable format for downstream processing.\n\n## Purpose\nThis subflow encapsulates all the logic needed to:\n- Connect to the HubSpot CRM API\n- Fetch contact records\n- Filter by last modification date for incremental updates\n- Process and format the response data\n- Handle API errors gracefully\n\n## Flow Structure\n\n### Input\nThe subflow accepts messages containing optional `lastSync` timestamp to enable incremental data collection.\n\n### Core Components\n1. **Prepare API Request** (`hubspot-data-input`)\n   - Configures the API request with appropriate parameters\n   - Adds incremental sync filter if a `lastSync` value is provided\n   - Builds the request URL with proper encoding\n\n2. **HubSpot API Request** (`hubspot-http-request`)\n   - Performs the HTTP request to the HubSpot API\n   - Uses bearer token authentication\n   - Returns the response as a JavaScript object\n\n3. **Check Response** (`check-api-response`)\n   - Evaluates the API response status code\n   - Routes successful responses (200) to data extraction\n   - Routes errors to the error handler\n\n4. **Extract Contact Data** (`extract-contact-data`)\n   - Transforms the HubSpot API response into a simplified format\n   - Maps contact data to a consistent structure\n   - Preserves pagination information for batch processing\n   - Returns empty array if no results are found\n\n5. **Error Handling**\n   - **Handle API Error** (`handle-api-error`) - Formats error information from failed API calls\n   - **HubSpot API Error Handler** (`hubspot-data-catch`) - Catches errors from API-related nodes\n   - **Format Error** (`format-api-error`) - Ensures consistent error format\n   - **Log API Error** (`debug-api-error`) - Logs errors for monitoring\n\n## Usage\n\n### Basic Usage\nTo fetch contacts from HubSpot:\n1. Send a message to the subflow input\n2. Receive transformed contact data in the `msg.payload` of the output\n\n### Incremental Updates\nTo fetch only contacts updated since the last sync:\n1. Include `msg.lastSync` in your input message with an ISO timestamp\n2. The subflow will filter results to only include contacts modified after that time\n\n### Output Format\nThe subflow outputs contact data in the following format:\n```json\n[\n  {\n    \"id\": \"contact-id\",\n    \"properties\": {\n      \"email\": \"contact@example.com\",\n      \"firstname\": \"Moise\",\n      \"lastname\": \"Rushanika\",\n      \"company\": \"Omnipeak\",\n      \"industry\": \"Technology\",\n      \"lastmodifieddate\": \"2023-04-16T12:00:00Z\"\n    },\n    \"createdAt\": \"2023-01-01T00:00:00Z\",\n    \"updatedAt\": \"2023-04-16T12:00:00Z\"\n  },\n  // Additional contacts...\n]\n```\n\n### Pagination\nFor large data sets, the subflow preserves pagination information:\n- `msg.paging` contains the pagination data from the HubSpot API\n- This can be used in subsequent requests to fetch additional pages of data\n\n## Error Handling\nWhen API errors occur:\n- Detailed error information is captured and formatted\n- The error is logged with source information and timestamp\n- Error details include the HTTP status code and response payload\n\n## Configuration Requirements\nThe subflow requires:\n- A valid HubSpot API bearer token for authentication\n- Network access to the HubSpot API endpoints\n\n## Implementation Notes\n- The subflow fetches a maximum of 20 contacts per request\n- Contact data includes email, firstname, lastname, company, industry, and lastmodifieddate properties\n- Error catching is implemented for API request and data processing nodes",
+        "category": "",
+        "in": [
+            {
+                "x": 40,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "hubspot-data-input"
+                    }
+                ]
+            }
+        ],
+        "out": [
+            {
+                "x": 1180,
+                "y": 60,
+                "wires": [
+                    {
+                        "id": "extract-contact-data",
+                        "port": 0
+                    }
+                ]
+            }
+        ],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99"
+    },
+    {
+        "id": "data-processing-subflow",
+        "type": "subflow",
+        "name": "Data Processing",
+        "info": "# Data Persistence Subflow\n\n## Overview\n\nThe Data Persistence Subflow provides a reusable mechanism for storing and retrieving state data in a Node-RED flow. It's designed to support incremental processing by maintaining state between flow executions.\n\n## Purpose\n\nThis subflow handles two primary operations:\n- **Reading** state data from a file\n- **Writing** updated state data to a file\n\nThis persistent storage is particularly useful for:\n- Tracking the last synchronization time\n- Maintaining record counts\n- Preserving sync status between runs\n- Enabling incremental data processing\n\n## Subflow Architecture\n\n\n| ID | Node Type | Name | Purpose |\n|---|---|---|---|\n| persistence-input | function | Prepare Storage Request | Entry point that determines operation type |\n| check-operation | switch | Read or Write | Routes flow based on operation type |\n| read-state-file | file in | Read State File | Reads data from the state file |\n| process-read-data | function | Process Read Data | Parses and structures data from file |\n| prepare-write-data | function | Prepare Write Data | Formats data for writing |\n| write-state-file | file | Write State File | Writes data to state file |\n| persistence-catch | catch | Persistence Error Handler | Catches errors in the subflow |\n| handle-persistence-error | function | Handle Persistence Error | Processes caught errors |\n| log-persistence-error | debug | Log Persistence Error | Logs error information |\n| OutputLog | debug | Write File Successfully | Confirms successful writes |\n\n## Inputs and Outputs\n\n### Subflow Input\n- **Input Format**: The subflow expects a message object that may or may not contain a payload\n- If `msg.payload` exists, the operation is assumed to be a **write**\n- If `msg.payload` is empty/null, the operation is assumed to be a **read**\n\n### Subflow Output\n- For **read** operations:\n  - `msg.payload`: Contains the parsed state data (lastSync, recordCount, syncStatus)\n  - `msg.lastSync`: Contains the last synchronization timestamp for convenience\n  - `msg.originalPayload`: Preserves any original payload data\n- For **write** operations:\n  - Debug output confirming successful write operation\n\n## Flow Logic\n\n### Read Operation\n1. `persistence-input` determines this is a read operation\n2. `check-operation` routes to read path\n3. `read-state-file` attempts to read from the configured file\n4. `process-read-data` parses JSON and structures data\n5. Output provides the state data to the main flow\n\n### Write Operation\n1. `persistence-input` determines this is a write operation\n2. `check-operation` routes to write path\n3. `prepare-write-data` formats the data for storage\n4. `write-state-file` writes the data to disk\n5. `Write File Successfully` confirms the operation\n\n### Error Handling\nIf any errors occur during read/write operations:\n1. `persistence-catch` captures the error\n2. `handle-persistence-error` formats error details\n3. `log-persistence-error` logs the error information\n4. For read errors, a default state object is provided\n\n## Configuration\n\nThe subflow uses an environment variable:\n- `DATA_DIR`: Directory where state files are stored\n\nThe default state file is named `hubspot_sync_state.json` and is stored in the `DATA_DIR` directory.\n\n## State Data Structure\n\n```json\n{\n  \"lastSync\": \"2023-10-25T12:34:56.789Z\",\n  \"recordCount\": 42,\n  \"syncStatus\": \"completed\"\n}\n```\n\n- `lastSync`: ISO timestamp of last successful synchronization\n- `recordCount`: Number of records processed in last sync\n- `syncStatus`: Status of sync operation (\"completed\", \"error\", \"never_run\")\n\n## Usage Examples\n\n### Reading State\nTo read the current state, inject a message with no payload:\n\n```javascript\nreturn { topic: \"read_state\" };  // Empty payload triggers read\n```\n\n### Writing State\nTo update the state after processing:\n\n```javascript\nmsg.payload = processedRecords;  // Any non-empty payload triggers write\nreturn msg;\n```\n\n## Error States\n\nIf errors occur during read operations, default values are provided:\n- `lastSync`: null\n- `recordCount`: 0\n- `syncStatus`: \"error\"\n- `error`: Contains the error message\n\n## Notes\n\n- The subflow automatically creates the state file directory if it doesn't exist\n- Writes always overwrite the entire file rather than appending\n- JSON parsing errors result in default state values",
+        "category": "",
+        "in": [
+            {
+                "x": 40,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "data-processing-input"
+                    }
+                ]
+            }
+        ],
+        "out": [
+            {
+                "x": 740,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "transform-data",
+                        "port": 0
+                    }
+                ]
+            }
+        ],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99"
+    },
+    {
+        "id": "notification-subflow",
+        "type": "subflow",
+        "name": "Email Preparation/Sending",
+        "info": "# Email Notification Subflow\n\n## Overview\n\nThe Email Preparation/Sending subflow is designed to format and send email notifications based on processed contact data. This subflow utilizes the `node-red-node-email` module to handle email delivery.\n\n## Flow Structure\n\nThe subflow consists of the following components:\n\n1. **Input**: Receives contact data for email notifications\n2. **Format Email Message**: Prepares HTML email content for each contact\n3. **Split into individual emails**: Separates batch emails into individual messages\n4. **Validate Email Config**: Ensures email data is properly formatted\n5. **Send Email**: Transmits the email through SMTP\n6. **Error Handling**: Catches and logs any email delivery issues\n\n## Component Details\n\n### Format Email Message (function)\n\nThis function transforms incoming contact data into properly formatted email messages:\n\n- **Input**: Expects an array of contact objects in `msg.payload`\n- **Processing**: \n  - Validates that contacts exist and are in array format\n  - Generates HTML email content for each contact with styling\n  - Creates email objects with recipient, subject, and HTML content\n- **Output**: An array of email objects\n\n### Split into individual emails (split)\n\nThis node:\n- Takes the array of email objects\n- Splits them into individual messages\n- Sends each one to the validation step\n\n### Validate Email Config (function)\n\nThis function performs validation on each email object:\n\n- **Input**: Individual email object\n- **Processing**:\n  - Checks if the email object is properly formatted\n  - Validates required fields are present\n  - Restructures the message for the email node\n- **Output**: Valid email message or null if invalid\n\n### Send Email (e-mail)\n\nThis node handles the actual email transmission:\n\n- Uses SMTP protocol with Gmail's server (smtp.gmail.com)\n- Port: 465\n- Authentication: Basic\n- Security: TLS/SSL enabled\n\n### Error Handling\n\nThe subflow includes a comprehensive error handling system:\n\n- **Email Error Handler**: Catches errors from the Send Email node\n- **Log Email Error**: Formats error information including source, message, and timestamp\n- **Debug Email Error**: Logs the complete error details to the Node-RED debug panel\n\n\n\n## Notes\n\n- Error handling captures and logs any issues with email sending\n- The subflow can handle both single and multiple contact notifications\n- Emails are sent with \"HubSpot Contacts Update\" as the subject line",
+        "category": "",
+        "in": [
+            {
+                "x": 40,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "notification-input"
+                    }
+                ]
+            }
+        ],
+        "out": [],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99"
+    },
+    {
+        "id": "persistence-subflow",
+        "type": "subflow",
+        "name": "Data Persistence",
+        "info": "# Data Persistence Subflow\n\n## Overview\nThe Data Persistence Subflow is designed to handle storing and retrieving state data for incremental processing. It provides a standardized way to manage persistence in your flows, enabling consistent storage and retrieval of state information.\n\n## Purpose\nThis subflow encapsulates the logic needed to:\n- Read previous state data from a file\n- Process and provide state information to the main flow\n- Store updated state information after processing\n- Handle errors that may occur during persistence operations\n\n## Flow Structure\n\n### Input\nThe subflow accepts input messages and determines whether to perform a read or write operation based on message content.\n\n### Core Components\n1. **Prepare Storage Request** (`persistence-input`)\n   - Determines if this is a read or write operation\n   - Sets the appropriate filename for persistence\n   - Prepares data format for storage when writing\n\n2. **Read or Write Switch** (`check-operation`)\n   - Routes the message to either read or write path based on `msg.operation`\n\n3. **Read Path**\n   - **Read State File** (`read-state-file`) - Reads data from the persistence file\n   - **Process Read Data** (`process-read-data`) - Parses and formats the data for use in the main flow\n\n4. **Write Path**\n   - **Prepare Write Data** (`prepare-write-data`) - Formats data for storage\n   - **Write State File** (`write-state-file`) - Stores data to the persistence file\n   - **Write File Successfully** (`d00697ab1142a221`) - Debug node confirming successful write\n\n5. **Error Handling**\n   - **Persistence Error Handler** (`persistence-catch`) - Catches errors from persistence operations\n   - **Handle Persistence Error** (`handle-persistence-error`) - Formats errors and provides defaults\n   - **Log Persistence Error** (`log-persistence-error`) - Logs errors for monitoring\n\n## Usage\n\n### Reading State\nTo read the current state:\n1. Send a message to the subflow without a payload\n2. The subflow will return a message with:\n   - `msg.lastSync` - The timestamp of the last synchronization\n   - `msg.payload` - The complete sync data object\n\n### Writing State\nTo update the state:\n1. Send a message with a payload (typically your processed data)\n2. The subflow will:\n   - Create state information based on your data\n   - Store the current timestamp as `lastSync`\n   - Record the count of records processed\n   - Mark the `syncStatus` as \"completed\"\n\n### Error Handling\nIf errors occur during persistence operations:\n- For read errors: The subflow provides default state data\n- For write errors: Error information is returned in the payload\n- All errors are logged with detailed information\n\n## Configuration\nThe subflow expects an environment variable:\n- `DATA_DIR` - Directory path where state files will be stored\n\n## Default State Format\n```json\n{\n  \"lastSync\": \"2023-04-16T12:00:00Z\",\n  \"recordCount\": 123,\n  \"syncStatus\": \"completed\"\n}\n```\n\n## Implementation Details\n- State is stored in JSON format\n- Files are created if they don't exist\n- Default values are provided for first-run scenarios\n- Timestamps use ISO format for standardization",
+        "category": "",
+        "in": [
+            {
+                "x": 40,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "persistence-input"
+                    }
+                ]
+            }
+        ],
+        "out": [
+            {
+                "x": 1180,
+                "y": 40,
+                "wires": [
+                    {
+                        "id": "process-read-data",
+                        "port": 0
+                    }
+                ]
+            },
+            {
+                "x": 1320,
+                "y": 120,
+                "wires": [
+                    {
+                        "id": "41c4ece542507f40",
+                        "port": 0
+                    }
+                ]
+            }
+        ],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99"
+    },
+    {
+        "id": "2e2aa528beaea1af",
+        "type": "group",
+        "z": "main-flow",
+        "name": "Triggers",
+        "style": {
+            "fill": "#7fb7df",
+            "label": true,
+            "color": "#ffffff"
+        },
+        "nodes": [
+            "scheduler",
+            "manual-trigger"
+        ],
+        "x": 14,
+        "y": 19,
+        "w": 232,
+        "h": 142
+    },
+    {
+        "id": "933e0bfe4c9c9f17",
+        "type": "group",
+        "z": "main-flow",
+        "name": "Get & Process data",
+        "style": {
+            "fill": "#b797cf",
+            "label": true,
+            "color": "#000000"
+        },
+        "nodes": [
+            "fetch-hubspot-data",
+            "process-data",
+            "check-changes"
+        ],
+        "x": 454,
+        "y": 19,
+        "w": 712,
+        "h": 82
+    },
+    {
+        "id": "ce5441158e93937f",
+        "type": "group",
+        "z": "main-flow",
+        "name": "Completion",
+        "style": {
+            "fill": "#c8e7a7",
+            "label": true,
+            "color": "#001f60"
+        },
+        "nodes": [
+            "log-completion",
+            "0f09ad7d2278e6ea"
+        ],
+        "x": 1534,
+        "y": 139,
+        "w": 452,
+        "h": 82
+    },
+    {
+        "id": "hubspot-data-input",
+        "type": "function",
+        "z": "hubspot-data-subflow",
+        "name": "Prepare API Request",
+        "func": "// Get the last sync timestamp if available\nconst lastSync = msg.lastSync || null;\n\n// Configure HubSpot API Request\nlet endpoint = \"https://api.hubapi.com/crm/v3/objects/contacts\";\nlet params = {\n    limit: 20,\n    properties: [\"email\", \"firstname\", \"lastname\", \"company\", \"industry\", \"lastmodifieddate\"]\n};\n\n// If we have a last sync time, only get records updated since then\nif (lastSync) {\n    params.filter = `lastmodifieddate > ${lastSync}`;\n}\n\n// Prepare the request URL with query parameters\nlet url = endpoint + \"?\" + Object.entries(params)\n    .map(([key, value]) => {\n        if (key === \"properties\") {\n            return value.map(prop => `properties=${encodeURIComponent(prop)}`).join(\"&\");\n        }\n        return `${encodeURIComponent(key)}=${encodeURIComponent(value)}`;\n    })\n    .join(\"&\");\n\nmsg.url = url;\nmsg.method = \"GET\";\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 220,
         "y": 80,
         "wires": [
-          {
-            "id": "hubspot-data-input"
-          }
+            [
+                "hubspot-http-request"
+            ]
         ]
-      }
-    ],
-    "out": [
-      {
-        "x": 1180,
+    },
+    {
+        "id": "hubspot-http-request",
+        "type": "http request",
+        "z": "hubspot-data-subflow",
+        "name": "HubSpot API Request",
+        "method": "use",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "bearer",
+        "senderr": false,
+        "headers": [],
+        "x": 480,
+        "y": 80,
+        "wires": [
+            [
+                "check-api-response"
+            ]
+        ]
+    },
+    {
+        "id": "check-api-response",
+        "type": "switch",
+        "z": "hubspot-data-subflow",
+        "name": "Check Response",
+        "property": "statusCode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "200",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 730,
+        "y": 80,
+        "wires": [
+            [
+                "extract-contact-data"
+            ],
+            [
+                "handle-api-error"
+            ]
+        ]
+    },
+    {
+        "id": "extract-contact-data",
+        "type": "function",
+        "z": "hubspot-data-subflow",
+        "name": "Extract Contact Data",
+        "func": "// Extract relevant data from the HubSpot API response\nconst response = msg.payload;\n\nif (response && response.results && Array.isArray(response.results)) {\n    // Transform the data structure for easier processing\n    msg.payload = response.results.map(contact => {\n        return {\n            id: contact.id,\n            properties: contact.properties,\n            createdAt: contact.createdAt,\n            updatedAt: contact.updatedAt\n        };\n    });\n    \n    // Store pagination info for potential batch processing\n    if (response.paging) {\n        msg.paging = response.paging;\n    }\n    \n    return msg;\n} else {\n    // No results or unexpected format\n    msg.payload = [];\n    return msg;\n}",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 980,
         "y": 60,
         "wires": [
-          {
-            "id": "extract-contact-data",
-            "port": 0
-          }
+            []
         ]
-      }
-    ],
-    "env": [],
-    "meta": {},
-    "color": "#DDAA99"
-  },
-  {
-    "id": "data-processing-subflow",
-    "type": "subflow",
-    "name": "Data Processing",
-    "info": "# Data Persistence Subflow\n\n## Overview\n\nThe Data Persistence Subflow provides a reusable mechanism for storing and retrieving state data in a Node-RED flow. It's designed to support incremental processing by maintaining state between flow executions.\n\n## Purpose\n\nThis subflow handles two primary operations:\n- **Reading** state data from a file\n- **Writing** updated state data to a file\n\nThis persistent storage is particularly useful for:\n- Tracking the last synchronization time\n- Maintaining record counts\n- Preserving sync status between runs\n- Enabling incremental data processing\n\n## Subflow Architecture\n\n\n| ID | Node Type | Name | Purpose |\n|---|---|---|---|\n| persistence-input | function | Prepare Storage Request | Entry point that determines operation type |\n| check-operation | switch | Read or Write | Routes flow based on operation type |\n| read-state-file | file in | Read State File | Reads data from the state file |\n| process-read-data | function | Process Read Data | Parses and structures data from file |\n| prepare-write-data | function | Prepare Write Data | Formats data for writing |\n| write-state-file | file | Write State File | Writes data to state file |\n| persistence-catch | catch | Persistence Error Handler | Catches errors in the subflow |\n| handle-persistence-error | function | Handle Persistence Error | Processes caught errors |\n| log-persistence-error | debug | Log Persistence Error | Logs error information |\n| OutputLog | debug | Write File Successfully | Confirms successful writes |\n\n## Inputs and Outputs\n\n### Subflow Input\n- **Input Format**: The subflow expects a message object that may or may not contain a payload\n- If `msg.payload` exists, the operation is assumed to be a **write**\n- If `msg.payload` is empty/null, the operation is assumed to be a **read**\n\n### Subflow Output\n- For **read** operations:\n  - `msg.payload`: Contains the parsed state data (lastSync, recordCount, syncStatus)\n  - `msg.lastSync`: Contains the last synchronization timestamp for convenience\n  - `msg.originalPayload`: Preserves any original payload data\n- For **write** operations:\n  - Debug output confirming successful write operation\n\n## Flow Logic\n\n### Read Operation\n1. `persistence-input` determines this is a read operation\n2. `check-operation` routes to read path\n3. `read-state-file` attempts to read from the configured file\n4. `process-read-data` parses JSON and structures data\n5. Output provides the state data to the main flow\n\n### Write Operation\n1. `persistence-input` determines this is a write operation\n2. `check-operation` routes to write path\n3. `prepare-write-data` formats the data for storage\n4. `write-state-file` writes the data to disk\n5. `Write File Successfully` confirms the operation\n\n### Error Handling\nIf any errors occur during read/write operations:\n1. `persistence-catch` captures the error\n2. `handle-persistence-error` formats error details\n3. `log-persistence-error` logs the error information\n4. For read errors, a default state object is provided\n\n## Configuration\n\nThe subflow uses an environment variable:\n- `DATA_DIR`: Directory where state files are stored\n\nThe default state file is named `hubspot_sync_state.json` and is stored in the `DATA_DIR` directory.\n\n## State Data Structure\n\n```json\n{\n  \"lastSync\": \"2023-10-25T12:34:56.789Z\",\n  \"recordCount\": 42,\n  \"syncStatus\": \"completed\"\n}\n```\n\n- `lastSync`: ISO timestamp of last successful synchronization\n- `recordCount`: Number of records processed in last sync\n- `syncStatus`: Status of sync operation (\"completed\", \"error\", \"never_run\")\n\n## Usage Examples\n\n### Reading State\nTo read the current state, inject a message with no payload:\n\n```javascript\nreturn { topic: \"read_state\" };  // Empty payload triggers read\n```\n\n### Writing State\nTo update the state after processing:\n\n```javascript\nmsg.payload = processedRecords;  // Any non-empty payload triggers write\nreturn msg;\n```\n\n## Error States\n\nIf errors occur during read operations, default values are provided:\n- `lastSync`: null\n- `recordCount`: 0\n- `syncStatus`: \"error\"\n- `error`: Contains the error message\n\n## Notes\n\n- The subflow automatically creates the state file directory if it doesn't exist\n- Writes always overwrite the entire file rather than appending\n- JSON parsing errors result in default state values",
-    "category": "",
-    "in": [
-      {
-        "x": 40,
+    },
+    {
+        "id": "handle-api-error",
+        "type": "function",
+        "z": "hubspot-data-subflow",
+        "name": "Handle API Error",
+        "func": "// Process the error response from HubSpot API\nmsg.error = {\n    source: \"HubSpot API\",\n    statusCode: msg.statusCode,\n    payload: msg.payload,\n    message: `HubSpot API error: ${msg.statusCode} - ${JSON.stringify(msg.payload)}`\n};\n\n// Pass the error to the catch node\nthrow new Error(msg.error.message);",
+        "outputs": 0,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 970,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "hubspot-data-catch",
+        "type": "catch",
+        "z": "hubspot-data-subflow",
+        "name": "HubSpot API Error Handler",
+        "scope": [
+            "hubspot-http-request",
+            "extract-contact-data",
+            "handle-api-error"
+        ],
+        "uncaught": false,
+        "x": 150,
+        "y": 280,
+        "wires": [
+            [
+                "format-api-error"
+            ]
+        ]
+    },
+    {
+        "id": "format-api-error",
+        "type": "function",
+        "z": "hubspot-data-subflow",
+        "name": "Format Error",
+        "func": "// Ensure error is properly formatted\nif (!msg.error) {\n    msg.error = {\n        source: \"HubSpot Data Collection\",\n        message: msg.error?.message || \"Unknown error in HubSpot data collection\"\n    };\n}\n\nmsg.payload = {\n    error: true,\n    message: msg.error.message,\n    timestamp: new Date().toISOString()\n};\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 280,
+        "wires": [
+            [
+                "debug-api-error"
+            ]
+        ]
+    },
+    {
+        "id": "debug-api-error",
+        "type": "debug",
+        "z": "hubspot-data-subflow",
+        "name": "Log API Error",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 620,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "data-processing-input",
+        "type": "function",
+        "z": "data-processing-subflow",
+        "name": "Validate Input Data",
+        "func": "// Validate input data format\nif (!Array.isArray(msg.payload)) {\n    msg.payload = [];\n    node.warn(\"Input data is not an array. Converting to empty array.\");\n}\n\n// Pass the data forward\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 190,
         "y": 80,
         "wires": [
-          {
-            "id": "data-processing-input"
-          }
+            [
+                "filter-contacts"
+            ]
         ]
-      }
-    ],
-    "out": [
-      {
-        "x": 740,
+    },
+    {
+        "id": "filter-contacts",
+        "type": "function",
+        "z": "data-processing-subflow",
+        "name": "Filter Contacts",
+        "func": "// Filter contacts based on criteria\nconst contacts = msg.payload;\n\nmsg.payload = contacts.filter(contact => {\n    // Check if the contact has an email\n    if (!contact.properties.email) {\n        return false;\n    }\n    \n      // Filter based on industries\n    const industry = contact.properties.industry?.toLowerCase();\n    if (industry) {\n        return ['technology', 'healthcare', 'software', 'medical'].some(\n            targetIndustry => industry.includes(targetIndustry)\n        );\n    }\n    return true;\n});\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
         "y": 80,
         "wires": [
-          {
-            "id": "transform-data",
-            "port": 0
-          }
+            [
+                "transform-data"
+            ]
         ]
-      }
-    ],
-    "env": [],
-    "meta": {},
-    "color": "#DDAA99"
-  },
-  {
-    "id": "notification-subflow",
-    "type": "subflow",
-    "name": "Email Preparation/Sending",
-    "info": "# Email Notification Subflow\n\n## Overview\n\nThe Email Preparation/Sending subflow is designed to format and send email notifications based on processed contact data. This subflow utilizes the `node-red-node-email` module to handle email delivery.\n\n## Flow Structure\n\nThe subflow consists of the following components:\n\n1. **Input**: Receives contact data for email notifications\n2. **Format Email Message**: Prepares HTML email content for each contact\n3. **Split into individual emails**: Separates batch emails into individual messages\n4. **Validate Email Config**: Ensures email data is properly formatted\n5. **Send Email**: Transmits the email through SMTP\n6. **Error Handling**: Catches and logs any email delivery issues\n\n## Component Details\n\n### Format Email Message (function)\n\nThis function transforms incoming contact data into properly formatted email messages:\n\n- **Input**: Expects an array of contact objects in `msg.payload`\n- **Processing**: \n  - Validates that contacts exist and are in array format\n  - Generates HTML email content for each contact with styling\n  - Creates email objects with recipient, subject, and HTML content\n- **Output**: An array of email objects\n\n### Split into individual emails (split)\n\nThis node:\n- Takes the array of email objects\n- Splits them into individual messages\n- Sends each one to the validation step\n\n### Validate Email Config (function)\n\nThis function performs validation on each email object:\n\n- **Input**: Individual email object\n- **Processing**:\n  - Checks if the email object is properly formatted\n  - Validates required fields are present\n  - Restructures the message for the email node\n- **Output**: Valid email message or null if invalid\n\n### Send Email (e-mail)\n\nThis node handles the actual email transmission:\n\n- Uses SMTP protocol with Gmail's server (smtp.gmail.com)\n- Port: 465\n- Authentication: Basic\n- Security: TLS/SSL enabled\n\n### Error Handling\n\nThe subflow includes a comprehensive error handling system:\n\n- **Email Error Handler**: Catches errors from the Send Email node\n- **Log Email Error**: Formats error information including source, message, and timestamp\n- **Debug Email Error**: Logs the complete error details to the Node-RED debug panel\n\n\n\n## Notes\n\n- Error handling captures and logs any issues with email sending\n- The subflow can handle both single and multiple contact notifications\n- Emails are sent with \"HubSpot Contacts Update\" as the subject line",
-    "category": "",
-    "in": [
-      {
-        "x": 40,
+    },
+    {
+        "id": "transform-data",
+        "type": "function",
+        "z": "data-processing-subflow",
+        "name": "Transform Data",
+        "func": "// Transform contact data into a more usable format for email later\nconst contacts = msg.payload;\n\nmsg.payload = contacts.map(contact => {\n    // Extract and normalize contact properties\n    return {\n        id: contact.id,\n        email: contact.properties.email,\n        name: `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim(),\n        company: contact.properties.company || 'Unknown',\n        industry: contact.properties.industry || 'Unknown',\n        lastModified: contact.properties.lastmodifieddate,\n    };\n});\n\nmsg.metadata = {\n    totalContacts: msg.payload.length,\n    processedDate: new Date().toISOString(),\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
         "y": 80,
         "wires": [
-          {
-            "id": "notification-input"
-          }
+            []
         ]
-      }
-    ],
-    "out": [],
-    "env": [],
-    "meta": {},
-    "color": "#DDAA99"
-  },
-  {
-    "id": "persistence-subflow",
-    "type": "subflow",
-    "name": "Data Persistence",
-    "info": "# Data Persistence Subflow\n\n## Overview\nThe Data Persistence Subflow is designed to handle storing and retrieving state data for incremental processing. It provides a standardized way to manage persistence in your flows, enabling consistent storage and retrieval of state information.\n\n## Purpose\nThis subflow encapsulates the logic needed to:\n- Read previous state data from a file\n- Process and provide state information to the main flow\n- Store updated state information after processing\n- Handle errors that may occur during persistence operations\n\n## Flow Structure\n\n### Input\nThe subflow accepts input messages and determines whether to perform a read or write operation based on message content.\n\n### Core Components\n1. **Prepare Storage Request** (`persistence-input`)\n   - Determines if this is a read or write operation\n   - Sets the appropriate filename for persistence\n   - Prepares data format for storage when writing\n\n2. **Read or Write Switch** (`check-operation`)\n   - Routes the message to either read or write path based on `msg.operation`\n\n3. **Read Path**\n   - **Read State File** (`read-state-file`) - Reads data from the persistence file\n   - **Process Read Data** (`process-read-data`) - Parses and formats the data for use in the main flow\n\n4. **Write Path**\n   - **Prepare Write Data** (`prepare-write-data`) - Formats data for storage\n   - **Write State File** (`write-state-file`) - Stores data to the persistence file\n   - **Write File Successfully** (`d00697ab1142a221`) - Debug node confirming successful write\n\n5. **Error Handling**\n   - **Persistence Error Handler** (`persistence-catch`) - Catches errors from persistence operations\n   - **Handle Persistence Error** (`handle-persistence-error`) - Formats errors and provides defaults\n   - **Log Persistence Error** (`log-persistence-error`) - Logs errors for monitoring\n\n## Usage\n\n### Reading State\nTo read the current state:\n1. Send a message to the subflow without a payload\n2. The subflow will return a message with:\n   - `msg.lastSync` - The timestamp of the last synchronization\n   - `msg.payload` - The complete sync data object\n\n### Writing State\nTo update the state:\n1. Send a message with a payload (typically your processed data)\n2. The subflow will:\n   - Create state information based on your data\n   - Store the current timestamp as `lastSync`\n   - Record the count of records processed\n   - Mark the `syncStatus` as \"completed\"\n\n### Error Handling\nIf errors occur during persistence operations:\n- For read errors: The subflow provides default state data\n- For write errors: Error information is returned in the payload\n- All errors are logged with detailed information\n\n## Configuration\nThe subflow expects an environment variable:\n- `DATA_DIR` - Directory path where state files will be stored\n\n## Default State Format\n```json\n{\n  \"lastSync\": \"2023-04-16T12:00:00Z\",\n  \"recordCount\": 123,\n  \"syncStatus\": \"completed\"\n}\n```\n\n## Implementation Details\n- State is stored in JSON format\n- Files are created if they don't exist\n- Default values are provided for first-run scenarios\n- Timestamps use ISO format for standardization",
-    "category": "",
-    "in": [
-      {
-        "x": 40,
+    },
+    {
+        "id": "data-processing-catch",
+        "type": "catch",
+        "z": "data-processing-subflow",
+        "name": "Processing Error Handler",
+        "scope": [
+            "validate-input-data",
+            "filter-contacts",
+            "transform-data"
+        ],
+        "uncaught": false,
+        "x": 150,
+        "y": 160,
+        "wires": [
+            [
+                "format-processing-error"
+            ]
+        ]
+    },
+    {
+        "id": "format-processing-error",
+        "type": "function",
+        "z": "data-processing-subflow",
+        "name": "Format Error",
+        "func": "// Ensure error is properly formatted\nif (!msg.error) {\n    msg.error = {\n        source: \"Data Processing\",\n        message: msg.error?.message || \"Unknown error in data processing\"\n    };\n}\n\nmsg.payload = {\n    error: true,\n    message: msg.error.message,\n    timestamp: new Date().toISOString()\n};\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 160,
+        "wires": [
+            [
+                "debug-processing-error"
+            ]
+        ]
+    },
+    {
+        "id": "debug-processing-error",
+        "type": "debug",
+        "z": "data-processing-subflow",
+        "name": "Log Processing Error",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 630,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "notification-input",
+        "type": "function",
+        "z": "notification-subflow",
+        "name": "Format Email Message",
+        "func": "const contacts = msg.payload;\nif (!Array.isArray(contacts) || contacts.length === 0) {\n    return null; // No contacts to notify\n}\nconst metadata = msg.metadata || {};\nconst subject = \"HubSpot Contacts Update\";\n\nfunction generateEmailBody(contact) {\n    const name = contact.name;\n    const html = '<html>' +\n        '<head>' +\n        '<style>' +\n        'body{font-family:Arial,sans-serif;color:#333;margin:20px;}' +\n        '.container{max-width:600px;}' +\n        '.details{background:#f4f4f4;padding:10px;border-radius:5px;}' +\n        'pre{white-space:pre-wrap;}' +\n        '</style>' +\n        '</head>' +\n        '<body>' +\n        '<div class=\"container\">' +\n        '<p>Hello <strong>' + name + '</strong>,</p>' +\n        '<p>This is an automated update regarding your contact information.</p>' +\n        '<p><strong>Details:</strong></p>' +\n        '<p>Thank you,<br>The HubSpot Team</p>' +\n        '</div>' +\n        '</body>' +\n        '</html>';\n    \n    return html;\n}\n\nconst emails = contacts.map(contact => ({\n    to: contact.email,\n    subject: subject,\n    html: generateEmailBody(contact)\n    \n}));\n\nmsg.payload = emails\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 200,
         "y": 80,
         "wires": [
-          {
-            "id": "persistence-input"
-          }
+            [
+                "fcbe63a8be8eb981"
+            ]
         ]
-      }
-    ],
-    "out": [
-      {
-        "x": 1180,
+    },
+    {
+        "id": "check-email-config",
+        "type": "function",
+        "z": "notification-subflow",
+        "name": "Validate Email Config",
+        "func": "const email = msg.payload;\n\n// Validate input\nif (!email || typeof email !== 'object') {\n    node.error(\"Invalid email format: email must be an object\", msg);\n    return null;\n}\n\n\nif (!email.to) {\n    node.warn(\"Missing recipient (to) field in email\");\n}\nmsg = {\n    to: email.to,\n    topic: email.subject,\n    payload: email.html?.trim()\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 780,
+        "y": 80,
+        "wires": [
+            [
+                "send-email"
+            ]
+        ]
+    },
+    {
+        "id": "email-error-handler",
+        "type": "catch",
+        "z": "notification-subflow",
+        "name": "Email Error Handler",
+        "scope": [
+            "send-email"
+        ],
+        "uncaught": false,
+        "x": 180,
+        "y": 280,
+        "wires": [
+            [
+                "log-email-error"
+            ]
+        ]
+    },
+    {
+        "id": "log-email-error",
+        "type": "function",
+        "z": "notification-subflow",
+        "name": "Log Email Error",
+        "func": "// Format the email error\nmsg.error = {\n    source: \"Email Notification\",\n    message: msg.error?.message || \"Unknown error in email notification\",\n    timestamp: new Date().toISOString()\n};\n\nmsg.payload = {\n    status: \"Email sending failed\",\n    error: msg.error.message,\n    timestamp: msg.error.timestamp\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 280,
+        "wires": [
+            [
+                "debug-email-error"
+            ]
+        ]
+    },
+    {
+        "id": "debug-email-error",
+        "type": "debug",
+        "z": "notification-subflow",
+        "name": "Log Email Error",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 590,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "fcbe63a8be8eb981",
+        "type": "split",
+        "z": "notification-subflow",
+        "name": "Split into individual emails",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "property": "payload",
+        "x": 470,
+        "y": 80,
+        "wires": [
+            [
+                "check-email-config"
+            ]
+        ]
+    },
+    {
+        "id": "send-email",
+        "type": "e-mail",
+        "z": "notification-subflow",
+        "server": "smtp.gmail.com",
+        "port": "465",
+        "authtype": "BASIC",
+        "saslformat": false,
+        "token": "oauth2Response.access_token",
+        "secure": true,
+        "tls": true,
+        "name": "",
+        "dname": "Send Email",
+        "x": 1070,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "check-operation",
+        "type": "switch",
+        "z": "persistence-subflow",
+        "name": "Read or Write",
+        "property": "operation",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "read",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "write",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 460,
+        "y": 80,
+        "wires": [
+            [
+                "read-state-file"
+            ],
+            [
+                "prepare-write-data"
+            ]
+        ]
+    },
+    {
+        "id": "read-state-file",
+        "type": "file in",
+        "z": "persistence-subflow",
+        "name": "Read State File",
+        "filename": "filename",
+        "filenameType": "msg",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "utf8",
+        "allProps": false,
+        "x": 680,
         "y": 40,
         "wires": [
-          {
-            "id": "process-read-data",
-            "port": 0
-          }
+            [
+                "process-read-data"
+            ]
         ]
-      }
-    ],
-    "env": [],
-    "meta": {},
-    "color": "#DDAA99"
-  },
-  {
-    "id": "2e2aa528beaea1af",
-    "type": "group",
-    "z": "main-flow",
-    "name": "Triggers",
-    "style": {
-      "fill": "#7fb7df",
-      "label": true,
-      "color": "#ffffff"
     },
-    "nodes": ["scheduler", "manual-trigger"],
-    "x": 14,
-    "y": 19,
-    "w": 232,
-    "h": 142
-  },
-  {
-    "id": "933e0bfe4c9c9f17",
-    "type": "group",
-    "z": "main-flow",
-    "name": "Get & Process data",
-    "style": {
-      "fill": "#c8e7a7",
-      "label": true,
-      "color": "#000000"
+    {
+        "id": "process-read-data",
+        "type": "function",
+        "z": "persistence-subflow",
+        "name": "Process Read Data",
+        "func": "// Process the data read from file\nlet syncData = JSON.parse(msg.payload);\n\nif (!syncData || typeof syncData !== 'object') {\n    // No sync data found or invalid format\n    syncData = {\n        lastSync: null,\n        recordCount: 0,\n        syncStatus: \"never_run\"\n    };\n}\n\n// Add the sync data to the message\nmsg.lastSync = syncData.lastSync;\n\n// Keep the original payload if it exists (for continuity in the flow)\nif (!msg.originalPayload && msg.payload) {\n    msg.originalPayload = msg.payload;\n}\n\n// Set the payload to the sync data for the output\nmsg.payload = syncData;\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 930,
+        "y": 40,
+        "wires": [
+            []
+        ]
     },
-    "nodes": ["fetch-hubspot-data", "process-data", "check-changes"],
-    "x": 454,
-    "y": 19,
-    "w": 712,
-    "h": 82
-  },
-  {
-    "id": "hubspot-data-input",
-    "type": "function",
-    "z": "hubspot-data-subflow",
-    "name": "Prepare API Request",
-    "func": "// Get the last sync timestamp if available\nconst lastSync = msg.lastSync || null;\n\n// Configure HubSpot API Request\nlet endpoint = \"https://api.hubapi.com/crm/v3/objects/contacts\";\nlet params = {\n    limit: 20,\n    properties: [\"email\", \"firstname\", \"lastname\", \"company\", \"industry\", \"lastmodifieddate\"]\n};\n\n// If we have a last sync time, only get records updated since then\nif (lastSync) {\n    params.filter = `lastmodifieddate > ${lastSync}`;\n}\n\n// Prepare the request URL with query parameters\nlet url = endpoint + \"?\" + Object.entries(params)\n    .map(([key, value]) => {\n        if (key === \"properties\") {\n            return value.map(prop => `properties=${encodeURIComponent(prop)}`).join(\"&\");\n        }\n        return `${encodeURIComponent(key)}=${encodeURIComponent(value)}`;\n    })\n    .join(\"&\");\n\nmsg.url = url;\nmsg.method = \"GET\";\n\nreturn msg;",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 220,
-    "y": 80,
-    "wires": [["hubspot-http-request"]]
-  },
-  {
-    "id": "hubspot-http-request",
-    "type": "http request",
-    "z": "hubspot-data-subflow",
-    "name": "HubSpot API Request",
-    "method": "use",
-    "ret": "obj",
-    "paytoqs": "ignore",
-    "url": "",
-    "tls": "",
-    "persist": false,
-    "proxy": "",
-    "insecureHTTPParser": false,
-    "authType": "bearer",
-    "senderr": false,
-    "headers": [],
-    "x": 480,
-    "y": 80,
-    "wires": [["check-api-response"]]
-  },
-  {
-    "id": "check-api-response",
-    "type": "switch",
-    "z": "hubspot-data-subflow",
-    "name": "Check Response",
-    "property": "statusCode",
-    "propertyType": "msg",
-    "rules": [
-      {
-        "t": "eq",
-        "v": "200",
-        "vt": "str"
-      },
-      {
-        "t": "else"
-      }
-    ],
-    "checkall": "true",
-    "repair": false,
-    "outputs": 2,
-    "x": 730,
-    "y": 80,
-    "wires": [["extract-contact-data"], ["handle-api-error"]]
-  },
-  {
-    "id": "extract-contact-data",
-    "type": "function",
-    "z": "hubspot-data-subflow",
-    "name": "Extract Contact Data",
-    "func": "// Extract relevant data from the HubSpot API response\nconst response = msg.payload;\n\nif (response && response.results && Array.isArray(response.results)) {\n    // Transform the data structure for easier processing\n    msg.payload = response.results.map(contact => {\n        return {\n            id: contact.id,\n            properties: contact.properties,\n            createdAt: contact.createdAt,\n            updatedAt: contact.updatedAt\n        };\n    });\n    \n    // Store pagination info for potential batch processing\n    if (response.paging) {\n        msg.paging = response.paging;\n    }\n    \n    return msg;\n} else {\n    // No results or unexpected format\n    msg.payload = [];\n    return msg;\n}",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 980,
-    "y": 60,
-    "wires": [[]]
-  },
-  {
-    "id": "handle-api-error",
-    "type": "function",
-    "z": "hubspot-data-subflow",
-    "name": "Handle API Error",
-    "func": "// Process the error response from HubSpot API\nmsg.error = {\n    source: \"HubSpot API\",\n    statusCode: msg.statusCode,\n    payload: msg.payload,\n    message: `HubSpot API error: ${msg.statusCode} - ${JSON.stringify(msg.payload)}`\n};\n\n// Pass the error to the catch node\nthrow new Error(msg.error.message);",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 970,
-    "y": 160,
-    "wires": [[]]
-  },
-  {
-    "id": "hubspot-data-catch",
-    "type": "catch",
-    "z": "hubspot-data-subflow",
-    "name": "HubSpot API Error Handler",
-    "scope": [
-      "hubspot-http-request",
-      "extract-contact-data",
-      "handle-api-error"
-    ],
-    "uncaught": false,
-    "x": 150,
-    "y": 280,
-    "wires": [["format-api-error"]]
-  },
-  {
-    "id": "format-api-error",
-    "type": "function",
-    "z": "hubspot-data-subflow",
-    "name": "Format Error",
-    "func": "// Ensure error is properly formatted\nif (!msg.error) {\n    msg.error = {\n        source: \"HubSpot Data Collection\",\n        message: msg.error?.message || \"Unknown error in HubSpot data collection\"\n    };\n}\n\nmsg.payload = {\n    error: true,\n    message: msg.error.message,\n    timestamp: new Date().toISOString()\n};\n\nreturn msg;",
-    "outputs": 1,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 390,
-    "y": 280,
-    "wires": [["debug-api-error"]]
-  },
-  {
-    "id": "debug-api-error",
-    "type": "debug",
-    "z": "hubspot-data-subflow",
-    "name": "Log API Error",
-    "active": true,
-    "tosidebar": true,
-    "console": true,
-    "tostatus": false,
-    "complete": "true",
-    "targetType": "full",
-    "statusVal": "",
-    "statusType": "auto",
-    "x": 620,
-    "y": 280,
-    "wires": []
-  },
-  {
-    "id": "data-processing-input",
-    "type": "function",
-    "z": "data-processing-subflow",
-    "name": "Validate Input Data",
-    "func": "// Validate input data format\nif (!Array.isArray(msg.payload)) {\n    msg.payload = [];\n    node.warn(\"Input data is not an array. Converting to empty array.\");\n}\n\n// Pass the data forward\nreturn msg;",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 190,
-    "y": 80,
-    "wires": [["filter-contacts"]]
-  },
-  {
-    "id": "filter-contacts",
-    "type": "function",
-    "z": "data-processing-subflow",
-    "name": "Filter Contacts",
-    "func": "// Filter contacts based on criteria\nconst contacts = msg.payload;\n\nmsg.payload = contacts.filter(contact => {\n    // Check if the contact has an email\n    if (!contact.properties.email) {\n        return false;\n    }\n    \n      // Filter based on industries\n    const industry = contact.properties.industry?.toLowerCase();\n    if (industry) {\n        return ['technology', 'healthcare', 'software', 'medical'].some(\n            targetIndustry => industry.includes(targetIndustry)\n        );\n    }\n    return true;\n});\n\nreturn msg;",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 400,
-    "y": 80,
-    "wires": [["transform-data"]]
-  },
-  {
-    "id": "transform-data",
-    "type": "function",
-    "z": "data-processing-subflow",
-    "name": "Transform Data",
-    "func": "// Transform contact data into a more usable format for email later\nconst contacts = msg.payload;\n\nmsg.payload = contacts.map(contact => {\n    // Extract and normalize contact properties\n    return {\n        id: contact.id,\n        email: contact.properties.email,\n        name: `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim(),\n        company: contact.properties.company || 'Unknown',\n        industry: contact.properties.industry || 'Unknown',\n        lastModified: contact.properties.lastmodifieddate,\n    };\n});\n\nmsg.metadata = {\n    totalContacts: msg.payload.length,\n    processedDate: new Date().toISOString(),\n};\n\nreturn msg;",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 600,
-    "y": 80,
-    "wires": [[]]
-  },
-  {
-    "id": "data-processing-catch",
-    "type": "catch",
-    "z": "data-processing-subflow",
-    "name": "Processing Error Handler",
-    "scope": ["validate-input-data", "filter-contacts", "transform-data"],
-    "uncaught": false,
-    "x": 150,
-    "y": 160,
-    "wires": [["format-processing-error"]]
-  },
-  {
-    "id": "format-processing-error",
-    "type": "function",
-    "z": "data-processing-subflow",
-    "name": "Format Error",
-    "func": "// Ensure error is properly formatted\nif (!msg.error) {\n    msg.error = {\n        source: \"Data Processing\",\n        message: msg.error?.message || \"Unknown error in data processing\"\n    };\n}\n\nmsg.payload = {\n    error: true,\n    message: msg.error.message,\n    timestamp: new Date().toISOString()\n};\n\nreturn msg;",
-    "outputs": 1,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 410,
-    "y": 160,
-    "wires": [["debug-processing-error"]]
-  },
-  {
-    "id": "debug-processing-error",
-    "type": "debug",
-    "z": "data-processing-subflow",
-    "name": "Log Processing Error",
-    "active": true,
-    "tosidebar": true,
-    "console": true,
-    "tostatus": false,
-    "complete": "true",
-    "targetType": "full",
-    "statusVal": "",
-    "statusType": "auto",
-    "x": 630,
-    "y": 160,
-    "wires": []
-  },
-  {
-    "id": "notification-input",
-    "type": "function",
-    "z": "notification-subflow",
-    "name": "Format Email Message",
-    "func": "const contacts = msg.payload;\nif (!Array.isArray(contacts) || contacts.length === 0) {\n    return null; // No contacts to notify\n}\nconst metadata = msg.metadata || {};\nconst subject = \"HubSpot Contacts Update\";\n\nfunction generateEmailBody(contact) {\n    const name = contact.name;\n    const html = '<html>' +\n        '<head>' +\n        '<style>' +\n        'body{font-family:Arial,sans-serif;color:#333;margin:20px;}' +\n        '.container{max-width:600px;}' +\n        '.details{background:#f4f4f4;padding:10px;border-radius:5px;}' +\n        'pre{white-space:pre-wrap;}' +\n        '</style>' +\n        '</head>' +\n        '<body>' +\n        '<div class=\"container\">' +\n        '<p>Hello <strong>' + name + '</strong>,</p>' +\n        '<p>This is an automated update regarding your contact information.</p>' +\n        '<p><strong>Details:</strong></p>' +\n        '<p>Thank you,<br>The HubSpot Team</p>' +\n        '</div>' +\n        '</body>' +\n        '</html>';\n    \n    return html;\n}\n\nconst emails = contacts.map(contact => ({\n    to: contact.email,\n    subject: subject,\n    html: generateEmailBody(contact)\n    \n}));\n\nmsg.payload = emails\n\nreturn msg;",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 200,
-    "y": 80,
-    "wires": [["fcbe63a8be8eb981"]]
-  },
-  {
-    "id": "check-email-config",
-    "type": "function",
-    "z": "notification-subflow",
-    "name": "Validate Email Config",
-    "func": "const email = msg.payload;\n\n// Validate input\nif (!email || typeof email !== 'object') {\n    node.error(\"Invalid email format: email must be an object\", msg);\n    return null;\n}\n\n\nif (!email.to) {\n    node.warn(\"Missing recipient (to) field in email\");\n}\nmsg = {\n    to: email.to,\n    topic: email.subject,\n    payload: email.html?.trim()\n}\nreturn msg;",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 780,
-    "y": 80,
-    "wires": [["send-email"]]
-  },
-  {
-    "id": "email-error-handler",
-    "type": "catch",
-    "z": "notification-subflow",
-    "name": "Email Error Handler",
-    "scope": ["send-email"],
-    "uncaught": false,
-    "x": 180,
-    "y": 280,
-    "wires": [["log-email-error"]]
-  },
-  {
-    "id": "log-email-error",
-    "type": "function",
-    "z": "notification-subflow",
-    "name": "Log Email Error",
-    "func": "// Format the email error\nmsg.error = {\n    source: \"Email Notification\",\n    message: msg.error?.message || \"Unknown error in email notification\",\n    timestamp: new Date().toISOString()\n};\n\nmsg.payload = {\n    status: \"Email sending failed\",\n    error: msg.error.message,\n    timestamp: msg.error.timestamp\n};\n\nreturn msg;",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 400,
-    "y": 280,
-    "wires": [["debug-email-error"]]
-  },
-  {
-    "id": "debug-email-error",
-    "type": "debug",
-    "z": "notification-subflow",
-    "name": "Log Email Error",
-    "active": true,
-    "tosidebar": true,
-    "console": true,
-    "tostatus": false,
-    "complete": "true",
-    "targetType": "full",
-    "statusVal": "",
-    "statusType": "auto",
-    "x": 590,
-    "y": 280,
-    "wires": []
-  },
-  {
-    "id": "fcbe63a8be8eb981",
-    "type": "split",
-    "z": "notification-subflow",
-    "name": "Split into individual emails",
-    "splt": "\\n",
-    "spltType": "str",
-    "arraySplt": 1,
-    "arraySpltType": "len",
-    "stream": false,
-    "addname": "",
-    "property": "payload",
-    "x": 470,
-    "y": 80,
-    "wires": [["check-email-config"]]
-  },
-  {
-    "id": "send-email",
-    "type": "e-mail",
-    "z": "notification-subflow",
-    "server": "smtp.gmail.com",
-    "port": "465",
-    "authtype": "BASIC",
-    "saslformat": false,
-    "token": "oauth2Response.access_token",
-    "secure": true,
-    "tls": true,
-    "name": "",
-    "dname": "Send Email",
-    "x": 1070,
-    "y": 80,
-    "wires": []
-  },
-  {
-    "id": "check-operation",
-    "type": "switch",
-    "z": "persistence-subflow",
-    "name": "Read or Write",
-    "property": "operation",
-    "propertyType": "msg",
-    "rules": [
-      {
-        "t": "eq",
-        "v": "read",
-        "vt": "str"
-      },
-      {
-        "t": "eq",
-        "v": "write",
-        "vt": "str"
-      }
-    ],
-    "checkall": "true",
-    "repair": false,
-    "outputs": 2,
-    "x": 460,
-    "y": 80,
-    "wires": [["read-state-file"], ["prepare-write-data"]]
-  },
-  {
-    "id": "read-state-file",
-    "type": "file in",
-    "z": "persistence-subflow",
-    "name": "Read State File",
-    "filename": "filename",
-    "filenameType": "msg",
-    "format": "utf8",
-    "chunk": false,
-    "sendError": false,
-    "encoding": "utf8",
-    "allProps": false,
-    "x": 680,
-    "y": 40,
-    "wires": [["process-read-data"]]
-  },
-  {
-    "id": "process-read-data",
-    "type": "function",
-    "z": "persistence-subflow",
-    "name": "Process Read Data",
-    "func": "// Process the data read from file\nlet syncData = JSON.parse(msg.payload);\n\nif (!syncData || typeof syncData !== 'object') {\n    // No sync data found or invalid format\n    syncData = {\n        lastSync: null,\n        recordCount: 0,\n        syncStatus: \"never_run\"\n    };\n}\n\n// Add the sync data to the message\nmsg.lastSync = syncData.lastSync;\n\n// Keep the original payload if it exists (for continuity in the flow)\nif (!msg.originalPayload && msg.payload) {\n    msg.originalPayload = msg.payload;\n}\n\n// Set the payload to the sync data for the output\nmsg.payload = syncData;\n\nreturn msg;",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 930,
-    "y": 40,
-    "wires": [[]]
-  },
-  {
-    "id": "prepare-write-data",
-    "type": "function",
-    "z": "persistence-subflow",
-    "name": "Prepare Write Data",
-    "func": "// Format the data to be written\nmsg.payload = msg.storageData;\n\n// Ensure we have a timestamp\nif (!msg.payload.timestamp) {\n    msg.payload.timestamp = new Date().toISOString();\n}\n\nreturn msg;",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 690,
-    "y": 120,
-    "wires": [["write-state-file"]]
-  },
-  {
-    "id": "write-state-file",
-    "type": "file",
-    "z": "persistence-subflow",
-    "name": "Write State File",
-    "filename": "",
-    "appendNewline": false,
-    "createDir": true,
-    "overwriteFile": "true",
-    "encoding": "utf8",
-    "x": 940,
-    "y": 120,
-    "wires": [["d00697ab1142a221"]]
-  },
-  {
-    "id": "persistence-catch",
-    "type": "catch",
-    "z": "persistence-subflow",
-    "name": "Persistence Error Handler",
-    "scope": [
-      "read-state-file",
-      "process-read-data",
-      "prepare-write-data",
-      "write-state-file"
-    ],
-    "uncaught": false,
-    "x": 130,
-    "y": 220,
-    "wires": [["handle-persistence-error"]]
-  },
-  {
-    "id": "handle-persistence-error",
-    "type": "function",
-    "z": "persistence-subflow",
-    "name": "Handle Persistence Error",
-    "func": "// Format the persistence error\nmsg.error = {\n    source: \"Data Persistence\",\n    message: msg.error?.message || \"Unknown error in data persistence\",\n    operation: msg.operation,\n    filename: msg.filename,\n    timestamp: new Date().toISOString()\n};\n\n// For read errors, create default data\nif (msg.operation === \"read\") {\n    msg.lastSync = null;\n    msg.payload = {\n        lastSync: null,\n        recordCount: 0,\n        syncStatus: \"error\",\n        error: msg.error.message\n    };\n} else {\n    // For write errors\n    msg.payload = {\n        error: true,\n        message: msg.error.message,\n        timestamp: msg.error.timestamp\n    };\n}\n\nreturn msg;",
-    "outputs": 1,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 410,
-    "y": 220,
-    "wires": [["log-persistence-error"]]
-  },
-  {
-    "id": "log-persistence-error",
-    "type": "debug",
-    "z": "persistence-subflow",
-    "name": "Log Persistence Error",
-    "active": true,
-    "tosidebar": true,
-    "console": true,
-    "tostatus": false,
-    "complete": "true",
-    "targetType": "full",
-    "statusVal": "",
-    "statusType": "auto",
-    "x": 690,
-    "y": 220,
-    "wires": []
-  },
-  {
-    "id": "d00697ab1142a221",
-    "type": "debug",
-    "z": "persistence-subflow",
-    "name": "Write File Successfully",
-    "active": true,
-    "tosidebar": true,
-    "console": false,
-    "tostatus": true,
-    "complete": "true",
-    "targetType": "full",
-    "statusVal": "payload",
-    "statusType": "auto",
-    "x": 1180,
-    "y": 120,
-    "wires": []
-  },
-  {
-    "id": "persistence-input",
-    "type": "function",
-    "z": "persistence-subflow",
-    "name": "Prepare Storage Request",
-    "func": "// Determine operation type (read or write)\nconst isReadOperation = !msg.payload\n// Set the operation type\nmsg.operation = isReadOperation ? \"read\" : \"write\";\n\nconst dataDir = env.get(\"DATA_DIR\");\n\n// If this is a write operation, format the data to save\nif (!isReadOperation) {\n    // This is an update operation - store last sync time\n    msg.storageData = {\n        lastSync: new Date().toISOString(),\n        recordCount: Array.isArray(msg.payload) ? msg.payload.length : 0,\n        syncStatus: \"completed\"\n    };\n} else {\n    // This is a read operation - we'll retrieve the stored data\n    msg.storageData = null;\n}\n\n// Set the filename for persistence\nmsg.filename = `${dataDir}/hubspot_sync_state.json`;  \n\nreturn msg;",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 210,
-    "y": 80,
-    "wires": [["check-operation"]]
-  },
-  {
-    "id": "scheduler",
-    "type": "inject",
-    "z": "main-flow",
-    "g": "2e2aa528beaea1af",
-    "name": "Daily Schedule",
-    "props": [
-      {
-        "p": "topic",
-        "vt": "str"
-      }
-    ],
-    "repeat": "86400",
-    "crontab": "",
-    "once": false,
-    "onceDelay": 0.1,
-    "topic": "hubspot_daily_sync",
-    "x": 140,
-    "y": 120,
-    "wires": [["get-last-sync"]]
-  },
-  {
-    "id": "get-last-sync",
-    "type": "subflow:persistence-subflow",
-    "z": "main-flow",
-    "name": "Get Last Sync Time",
-    "env": [],
-    "x": 350,
-    "y": 60,
-    "wires": [["fetch-hubspot-data"]],
-    "info": "# Data Persistence Subflow\n\n## Overview\nThe Data Persistence Subflow is designed to handle storing and retrieving state data for incremental processing. It provides a standardized way to manage persistence in your flows, enabling consistent storage and retrieval of state information.\n\n## Purpose\nThis subflow encapsulates the logic needed to:\n- Read previous state data from a file\n- Process and provide state information to the main flow\n- Store updated state information after processing\n- Handle errors that may occur during persistence operations\n\n## Flow Structure\n\n### Input\nThe subflow accepts input messages and determines whether to perform a read or write operation based on message content.\n\n### Core Components\n1. **Prepare Storage Request** (`persistence-input`)\n   - Determines if this is a read or write operation\n   - Sets the appropriate filename for persistence\n   - Prepares data format for storage when writing\n\n2. **Read or Write Switch** (`check-operation`)\n   - Routes the message to either read or write path based on `msg.operation`\n\n3. **Read Path**\n   - **Read State File** (`read-state-file`) - Reads data from the persistence file\n   - **Process Read Data** (`process-read-data`) - Parses and formats the data for use in the main flow\n\n4. **Write Path**\n   - **Prepare Write Data** (`prepare-write-data`) - Formats data for storage\n   - **Write State File** (`write-state-file`) - Stores data to the persistence file\n   - **Write File Successfully** (`d00697ab1142a221`) - Debug node confirming successful write\n\n5. **Error Handling**\n   - **Persistence Error Handler** (`persistence-catch`) - Catches errors from persistence operations\n   - **Handle Persistence Error** (`handle-persistence-error`) - Formats errors and provides defaults\n   - **Log Persistence Error** (`log-persistence-error`) - Logs errors for monitoring\n\n## Usage\n\n### Reading State\nTo read the current state:\n1. Send a message to the subflow without a payload\n2. The subflow will return a message with:\n   - `msg.lastSync` - The timestamp of the last synchronization\n   - `msg.payload` - The complete sync data object\n\n### Writing State\nTo update the state:\n1. Send a message with a payload (typically your processed data)\n2. The subflow will:\n   - Create state information based on your data\n   - Store the current timestamp as `lastSync`\n   - Record the count of records processed\n   - Mark the `syncStatus` as \"completed\"\n\n### Error Handling\nIf errors occur during persistence operations:\n- For read errors: The subflow provides default state data\n- For write errors: Error information is returned in the payload\n- All errors are logged with detailed information\n\n## Configuration\nThe subflow expects an environment variable:\n- `DATA_DIR` - Directory path where state files will be stored\n\n## Default State Format\n```json\n{\n  \"lastSync\": \"2023-04-16T12:00:00Z\",\n  \"recordCount\": 123,\n  \"syncStatus\": \"completed\"\n}\n```\n\n## Implementation Details\n- State is stored in JSON format\n- Files are created if they don't exist\n- Default values are provided for first-run scenarios\n- Timestamps use ISO format for standardization"
-  },
-  {
-    "id": "fetch-hubspot-data",
-    "type": "subflow:hubspot-data-subflow",
-    "z": "main-flow",
-    "g": "933e0bfe4c9c9f17",
-    "name": "Fetch HubSpot Data",
-    "env": [],
-    "x": 580,
-    "y": 60,
-    "wires": [["process-data"]]
-  },
-  {
-    "id": "process-data",
-    "type": "subflow:data-processing-subflow",
-    "z": "main-flow",
-    "g": "933e0bfe4c9c9f17",
-    "name": "Process & Filter Data",
-    "env": [],
-    "x": 820,
-    "y": 60,
-    "wires": [["check-changes"]]
-  },
-  {
-    "id": "check-changes",
-    "type": "function",
-    "z": "main-flow",
-    "g": "933e0bfe4c9c9f17",
-    "name": "Check for Changes",
-    "func": "// Check if there are changes to notify about\nconst data = msg.payload;\n\nif (Array.isArray(data) && data.length > 0) {\n    return msg;\n} else {\n    // No changes to notify about\n    return null;\n}",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 1050,
-    "y": 60,
-    "wires": [["send-notifications", "update-last-sync"]]
-  },
-  {
-    "id": "send-notifications",
-    "type": "subflow:notification-subflow",
-    "z": "main-flow",
-    "name": "Email Preparation/Sending",
-    "env": [],
-    "x": 1360,
-    "y": 60,
-    "wires": []
-  },
-  {
-    "id": "update-last-sync",
-    "type": "subflow:persistence-subflow",
-    "z": "main-flow",
-    "name": "Update Last Sync Time",
-    "env": [],
-    "x": 1370,
-    "y": 180,
-    "wires": [["log-completion"]]
-  },
-  {
-    "id": "log-completion",
-    "type": "debug",
-    "z": "main-flow",
-    "name": "Log Completion",
-    "active": true,
-    "tosidebar": true,
-    "console": true,
-    "tostatus": false,
-    "complete": "payload",
-    "targetType": "msg",
-    "statusVal": "",
-    "statusType": "auto",
-    "x": 1670,
-    "y": 100,
-    "wires": []
-  },
-  {
-    "id": "main-flow-error",
-    "type": "catch",
-    "z": "main-flow",
-    "name": "Main Flow Error Handler",
-    "scope": null,
-    "uncaught": false,
-    "x": 130,
-    "y": 280,
-    "wires": [["log-error", "prepare-error-notification"]]
-  },
-  {
-    "id": "log-error",
-    "type": "debug",
-    "z": "main-flow",
-    "name": "Log Error",
-    "active": true,
-    "tosidebar": true,
-    "console": true,
-    "tostatus": false,
-    "complete": "true",
-    "targetType": "full",
-    "statusVal": "",
-    "statusType": "auto",
-    "x": 390,
-    "y": 220,
-    "wires": []
-  },
-  {
-    "id": "prepare-error-notification",
-    "type": "function",
-    "z": "main-flow",
-    "name": "Prepare Error Notification",
-    "func": "// Prepare error message for email notification\nmsg.payload = {\n    subject: \"HubSpot Integration Error\",\n    error: msg.error,\n    message: msg.error.message || \"Unknown error\",\n    timestamp: new Date().toISOString(),\n    source: msg.error.source || \"Unknown source\"\n};\nreturn msg;",
-    "outputs": 1,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 410,
-    "y": 340,
-    "wires": [["error-notification"]]
-  },
-  {
-    "id": "error-notification",
-    "type": "subflow:notification-subflow",
-    "z": "main-flow",
-    "name": "Send Error Notification",
-    "env": [],
-    "x": 680,
-    "y": 320,
-    "wires": []
-  },
-  {
-    "id": "manual-trigger",
-    "type": "inject",
-    "z": "main-flow",
-    "g": "2e2aa528beaea1af",
-    "name": "Manual Trigger",
-    "props": [
-      {
-        "p": "topic",
-        "vt": "str"
-      }
-    ],
-    "repeat": "",
-    "crontab": "",
-    "once": false,
-    "onceDelay": 0.1,
-    "topic": "manual_sync",
-    "x": 140,
-    "y": 60,
-    "wires": [["get-last-sync"]]
-  }
+    {
+        "id": "prepare-write-data",
+        "type": "function",
+        "z": "persistence-subflow",
+        "name": "Prepare Write Data",
+        "func": "// Format the data to be written\nmsg.payload = msg.storageData;\n\n// Ensure we have a timestamp\nif (!msg.payload.timestamp) {\n    msg.payload.timestamp = new Date().toISOString();\n}\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 690,
+        "y": 120,
+        "wires": [
+            [
+                "write-state-file"
+            ]
+        ]
+    },
+    {
+        "id": "write-state-file",
+        "type": "file",
+        "z": "persistence-subflow",
+        "name": "Write State File",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": false,
+        "createDir": true,
+        "overwriteFile": "true",
+        "encoding": "utf8",
+        "x": 940,
+        "y": 120,
+        "wires": [
+            [
+                "41c4ece542507f40"
+            ]
+        ]
+    },
+    {
+        "id": "persistence-catch",
+        "type": "catch",
+        "z": "persistence-subflow",
+        "name": "Persistence Error Handler",
+        "scope": [
+            "read-state-file",
+            "process-read-data",
+            "prepare-write-data",
+            "write-state-file"
+        ],
+        "uncaught": false,
+        "x": 130,
+        "y": 220,
+        "wires": [
+            [
+                "handle-persistence-error"
+            ]
+        ]
+    },
+    {
+        "id": "handle-persistence-error",
+        "type": "function",
+        "z": "persistence-subflow",
+        "name": "Handle Persistence Error",
+        "func": "// Format the persistence error\nmsg.error = {\n    source: \"Data Persistence\",\n    message: msg.error?.message || \"Unknown error in data persistence\",\n    operation: msg.operation,\n    filename: msg.filename,\n    timestamp: new Date().toISOString()\n};\n\n// For read errors, create default data\nif (msg.operation === \"read\") {\n    msg.lastSync = null;\n    msg.payload = {\n        lastSync: null,\n        recordCount: 0,\n        syncStatus: \"error\",\n        error: msg.error.message\n    };\n} else {\n    // For write errors\n    msg.payload = {\n        error: true,\n        message: msg.error.message,\n        timestamp: msg.error.timestamp\n    };\n}\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 220,
+        "wires": [
+            [
+                "log-persistence-error"
+            ]
+        ]
+    },
+    {
+        "id": "log-persistence-error",
+        "type": "debug",
+        "z": "persistence-subflow",
+        "name": "Log Persistence Error",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 690,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "persistence-input",
+        "type": "function",
+        "z": "persistence-subflow",
+        "name": "Prepare Storage Request",
+        "func": "// Determine operation type (read or write)\nconst isReadOperation = !msg.payload\n// Set the operation type\nmsg.operation = isReadOperation ? \"read\" : \"write\";\n\nconst dataDir = env.get(\"DATA_DIR\");\n\n// If this is a write operation, format the data to save\nif (!isReadOperation) {\n    // This is an update operation to store last sync time\n    msg.storageData = {\n        lastSync: new Date().toISOString(),\n        recordCount: Array.isArray(msg.payload) ? msg.payload.length : 0,\n        syncStatus: \"completed\"\n    };\n} else {\n    // This is a read operation - we'll retrieve the stored data\n    msg.storageData = null;\n}\n\n\nmsg.filename = `${dataDir}/hubspot_sync_state.json`;  \n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 210,
+        "y": 80,
+        "wires": [
+            [
+                "check-operation"
+            ]
+        ]
+    },
+    {
+        "id": "41c4ece542507f40",
+        "type": "function",
+        "z": "persistence-subflow",
+        "name": "Save successfully",
+        "func": "msg = {\n    sucess: true,\n    message: 'File saved'\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1150,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "scheduler",
+        "type": "inject",
+        "z": "main-flow",
+        "g": "2e2aa528beaea1af",
+        "name": "Daily Schedule",
+        "props": [
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "86400",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "hubspot_daily_sync",
+        "x": 140,
+        "y": 120,
+        "wires": [
+            [
+                "get-last-sync"
+            ]
+        ]
+    },
+    {
+        "id": "get-last-sync",
+        "type": "subflow:persistence-subflow",
+        "z": "main-flow",
+        "name": "Get Last Sync Time",
+        "env": [],
+        "x": 350,
+        "y": 60,
+        "wires": [
+            [
+                "fetch-hubspot-data"
+            ],
+            []
+        ],
+        "info": "# Data Persistence Subflow\n\n## Overview\nThe Data Persistence Subflow is designed to handle storing and retrieving state data for incremental processing. It provides a standardized way to manage persistence in your flows, enabling consistent storage and retrieval of state information.\n\n## Purpose\nThis subflow encapsulates the logic needed to:\n- Read previous state data from a file\n- Process and provide state information to the main flow\n- Store updated state information after processing\n- Handle errors that may occur during persistence operations\n\n## Flow Structure\n\n### Input\nThe subflow accepts input messages and determines whether to perform a read or write operation based on message content.\n\n### Core Components\n1. **Prepare Storage Request** (`persistence-input`)\n   - Determines if this is a read or write operation\n   - Sets the appropriate filename for persistence\n   - Prepares data format for storage when writing\n\n2. **Read or Write Switch** (`check-operation`)\n   - Routes the message to either read or write path based on `msg.operation`\n\n3. **Read Path**\n   - **Read State File** (`read-state-file`) - Reads data from the persistence file\n   - **Process Read Data** (`process-read-data`) - Parses and formats the data for use in the main flow\n\n4. **Write Path**\n   - **Prepare Write Data** (`prepare-write-data`) - Formats data for storage\n   - **Write State File** (`write-state-file`) - Stores data to the persistence file\n   - **Write File Successfully** (`d00697ab1142a221`) - Debug node confirming successful write\n\n5. **Error Handling**\n   - **Persistence Error Handler** (`persistence-catch`) - Catches errors from persistence operations\n   - **Handle Persistence Error** (`handle-persistence-error`) - Formats errors and provides defaults\n   - **Log Persistence Error** (`log-persistence-error`) - Logs errors for monitoring\n\n## Usage\n\n### Reading State\nTo read the current state:\n1. Send a message to the subflow without a payload\n2. The subflow will return a message with:\n   - `msg.lastSync` - The timestamp of the last synchronization\n   - `msg.payload` - The complete sync data object\n\n### Writing State\nTo update the state:\n1. Send a message with a payload (typically your processed data)\n2. The subflow will:\n   - Create state information based on your data\n   - Store the current timestamp as `lastSync`\n   - Record the count of records processed\n   - Mark the `syncStatus` as \"completed\"\n\n### Error Handling\nIf errors occur during persistence operations:\n- For read errors: The subflow provides default state data\n- For write errors: Error information is returned in the payload\n- All errors are logged with detailed information\n\n## Configuration\nThe subflow expects an environment variable:\n- `DATA_DIR` - Directory path where state files will be stored\n\n## Default State Format\n```json\n{\n  \"lastSync\": \"2023-04-16T12:00:00Z\",\n  \"recordCount\": 123,\n  \"syncStatus\": \"completed\"\n}\n```\n\n## Implementation Details\n- State is stored in JSON format\n- Files are created if they don't exist\n- Default values are provided for first-run scenarios\n- Timestamps use ISO format for standardization"
+    },
+    {
+        "id": "fetch-hubspot-data",
+        "type": "subflow:hubspot-data-subflow",
+        "z": "main-flow",
+        "g": "933e0bfe4c9c9f17",
+        "name": "Fetch HubSpot Data",
+        "env": [],
+        "x": 580,
+        "y": 60,
+        "wires": [
+            [
+                "process-data"
+            ]
+        ]
+    },
+    {
+        "id": "process-data",
+        "type": "subflow:data-processing-subflow",
+        "z": "main-flow",
+        "g": "933e0bfe4c9c9f17",
+        "name": "Process & Filter Data",
+        "env": [],
+        "x": 820,
+        "y": 60,
+        "wires": [
+            [
+                "check-changes"
+            ]
+        ]
+    },
+    {
+        "id": "check-changes",
+        "type": "function",
+        "z": "main-flow",
+        "g": "933e0bfe4c9c9f17",
+        "name": "Check for Changes",
+        "func": "// Check if there are changes to notify about\nconst data = msg.payload;\n\nif (Array.isArray(data) && data.length > 0) {\n    return msg;\n} else {\n    // No changes to notify about\n    return null;\n}",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1050,
+        "y": 60,
+        "wires": [
+            [
+                "send-notifications",
+                "update-last-sync"
+            ]
+        ]
+    },
+    {
+        "id": "send-notifications",
+        "type": "subflow:notification-subflow",
+        "z": "main-flow",
+        "name": "Email Preparation/Sending",
+        "env": [],
+        "x": 1360,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "update-last-sync",
+        "type": "subflow:persistence-subflow",
+        "z": "main-flow",
+        "name": "Update Last Sync Time",
+        "env": [],
+        "x": 1370,
+        "y": 180,
+        "wires": [
+            [],
+            [
+                "0f09ad7d2278e6ea"
+            ]
+        ]
+    },
+    {
+        "id": "log-completion",
+        "type": "debug",
+        "z": "main-flow",
+        "g": "ce5441158e93937f",
+        "name": "Log Completion",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "message",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1850,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "main-flow-error",
+        "type": "catch",
+        "z": "main-flow",
+        "name": "Main Flow Error Handler",
+        "scope": null,
+        "uncaught": false,
+        "x": 130,
+        "y": 280,
+        "wires": [
+            [
+                "log-error",
+                "prepare-error-notification"
+            ]
+        ]
+    },
+    {
+        "id": "log-error",
+        "type": "debug",
+        "z": "main-flow",
+        "name": "Log Error",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 390,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "prepare-error-notification",
+        "type": "function",
+        "z": "main-flow",
+        "name": "Prepare Error Notification",
+        "func": "// Prepare error message for email notification\nmsg.payload = {\n    subject: \"HubSpot Integration Error\",\n    error: msg.error,\n    message: msg.error.message || \"Unknown error\",\n    timestamp: new Date().toISOString(),\n    source: msg.error.source || \"Unknown source\"\n};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 340,
+        "wires": [
+            [
+                "error-notification"
+            ]
+        ]
+    },
+    {
+        "id": "error-notification",
+        "type": "subflow:notification-subflow",
+        "z": "main-flow",
+        "name": "Send Error Notification",
+        "env": [],
+        "x": 680,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "manual-trigger",
+        "type": "inject",
+        "z": "main-flow",
+        "g": "2e2aa528beaea1af",
+        "name": "Manual Trigger",
+        "props": [
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "manual_sync",
+        "x": 140,
+        "y": 60,
+        "wires": [
+            [
+                "get-last-sync"
+            ]
+        ]
+    },
+    {
+        "id": "0f09ad7d2278e6ea",
+        "type": "function",
+        "z": "main-flow",
+        "g": "ce5441158e93937f",
+        "name": "ackSuccess",
+        "func": "if(msg.sucess){\n    msg.message = 'Done'\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1630,
+        "y": 180,
+        "wires": [
+            [
+                "log-completion"
+            ]
+        ]
+    }
 ]
